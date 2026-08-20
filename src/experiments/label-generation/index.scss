@@ -1,0 +1,10 @@
+.ai-label-generation-plugin {
+	&__button.components-button.has-icon.has-text {
+		width: 100%;
+		justify-content: center;
+	}
+
+	&__description {
+		color: var(--wpds-color-fg-content-neutral-weak, #757575);
+	}
+}
