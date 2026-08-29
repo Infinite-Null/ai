@@ -14,7 +14,9 @@ use WP_Query;
 use WordPress\AI\Abstracts\Abstract_Ability;
 use WordPress\AI\Experiments\Internal_Links\Internal_Links as Internal_Links_Experiment;
 
+use function WordPress\AI\generate_embeddings;
 use function WordPress\AI\normalize_content;
+use function WordPress\AI\supports_embedding_generation;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -24,24 +26,31 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Internal Links WordPress Ability.
  *
- * Receives the current post content and returns up to `max_suggestions`
- * internal link suggestions, each using an exact phrase from the content
- * as anchor text.
+ * Uses a two-phase approach to suggest internal links:
+ *
+ * 1. **Embedding retrieval** — Generates an embedding vector for the current
+ *    post content and for each published post, then ranks them by cosine
+ *    similarity to find the most semantically related candidates.
+ *
+ * 2. **LLM anchor selection** — Passes the top candidates to the AI and asks
+ *    it to choose exact phrases from the post content as anchor text.
  *
  * @since x.x.x
  */
 class Internal_Links extends Abstract_Ability {
 
 	/**
-	 * Maximum number of posts to include in the site index sent to the AI.
+	 * Number of semantically similar posts passed to the LLM as candidates.
 	 *
-	 * Kept low to stay token-efficient.
+	 * After cosine-similarity ranking, only the top N posts are sent to the
+	 * LLM for anchor-text selection. Keeping this small makes the prompt
+	 * focused and accurate.
 	 *
 	 * @since x.x.x
 	 *
 	 * @var int
 	 */
-	private const SITE_INDEX_LIMIT = 200;
+	private const EMBEDDING_CANDIDATE_LIMIT = 10;
 
 	/**
 	 * Absolute cap on the number of suggestions that can be requested.
@@ -176,21 +185,36 @@ class Internal_Links extends Abstract_Ability {
 			$max_suggestions = self::DEFAULT_MAX_SUGGESTIONS;
 		}
 
-		// Convert HTML to plain text for anchor text matching.
+		// Embedding generation must be available before we proceed.
+		if ( ! supports_embedding_generation() ) {
+			return new WP_Error(
+				'embeddings_unsupported',
+				esc_html__( 'Internal link suggestions require embedding generation support, which is not available with the current AI provider configuration.', 'ai' )
+			);
+		}
+
+		// Convert HTML to plain text for embedding and anchor text matching.
 		$plain_text = normalize_content( wp_strip_all_tags( $post_content ) );
 
 		if ( empty( trim( $plain_text ) ) ) {
 			return array( 'suggestions' => array() );
 		}
 
-		// Build the list of linkable posts/pages from this site.
-		$site_index = $this->build_site_index( $post_id );
+		// Generate an embedding for the current post content.
+		$content_embedding = $this->get_embedding_for_text( $plain_text );
 
-		if ( empty( $site_index ) ) {
+		if ( is_wp_error( $content_embedding ) ) {
+			return $content_embedding;
+		}
+
+		// Find the most semantically similar published posts using cosine similarity.
+		$candidates = $this->find_similar_posts( $content_embedding, $post_id );
+
+		if ( empty( $candidates ) ) {
 			return array( 'suggestions' => array() );
 		}
 
-		$prompt         = $this->create_prompt( $plain_text, $site_index, $max_suggestions, $excluded_anchors );
+		$prompt         = $this->create_prompt( $plain_text, $candidates, $max_suggestions, $excluded_anchors );
 		$prompt_builder = $this->get_prompt_builder( $prompt );
 
 		if ( is_wp_error( $prompt_builder ) ) {
@@ -207,7 +231,7 @@ class Internal_Links extends Abstract_Ability {
 			return array( 'suggestions' => array() );
 		}
 
-		$suggestions = $this->parse_and_validate_response( (string) $raw, $plain_text, $site_index, $max_suggestions );
+		$suggestions = $this->parse_and_validate_response( (string) $raw, $plain_text, $candidates, $max_suggestions );
 
 		return array( 'suggestions' => $suggestions );
 	}
@@ -269,6 +293,150 @@ class Internal_Links extends Abstract_Ability {
 	}
 
 	/**
+	 * Generates an embedding vector for a plain-text string.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param string $text The text to embed.
+	 * @return list<float>|\WP_Error The embedding vector, or WP_Error on failure.
+	 */
+	public function get_embedding_for_text( string $text ) {
+		$result = generate_embeddings( $text );
+
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		return $result->getEmbedding()->getValues();
+	}
+
+	/**
+	 * Computes the cosine similarity between two equal-length vectors.
+	 *
+	 * Returns a value in [−1, 1]. Returns 0.0 when either vector has zero
+	 * magnitude (degenerate case).
+	 *
+	 * @since x.x.x
+	 *
+	 * @param list<float> $a First vector.
+	 * @param list<float> $b Second vector.
+	 * @return float Cosine similarity score.
+	 */
+	public function cosine_similarity( array $a, array $b ): float {
+		$dot    = 0.0;
+		$mag_a  = 0.0;
+		$mag_b  = 0.0;
+		$length = count( $a );
+
+		for ( $i = 0; $i < $length; $i++ ) {
+			$ai     = (float) ( $a[ $i ] ?? 0.0 );
+			$bi     = (float) ( $b[ $i ] ?? 0.0 );
+			$dot   += $ai * $bi;
+			$mag_a += $ai * $ai;
+			$mag_b += $bi * $bi;
+		}
+
+		$denom = sqrt( $mag_a ) * sqrt( $mag_b );
+
+		if ( $denom < 1.0e-10 ) {
+			return 0.0;
+		}
+
+		return $dot / $denom;
+	}
+
+	/**
+	 * Finds the most semantically similar published posts to the given embedding.
+	 *
+	 * Fetches all published post IDs (excluding the current post), generates an
+	 * embedding for each one, ranks them by cosine similarity, and returns the
+	 * top EMBEDDING_CANDIDATE_LIMIT entries with url and title.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param list<float> $content_embedding Embedding of the post being edited.
+	 * @param int         $exclude_post_id   ID of the post being edited (excluded from candidates).
+	 * @return list<array{url: string, title: string}> Top candidates ordered by similarity.
+	 */
+	public function find_similar_posts( array $content_embedding, int $exclude_post_id ): array {
+		$query = new WP_Query(
+			array(
+				'post_type'              => array( 'post', 'page' ),
+				'post_status'            => 'publish',
+				'posts_per_page'         => -1,
+				'post__not_in'           => $exclude_post_id ? array( $exclude_post_id ) : array(), // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_post__not_in, WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_post__not_in
+				'no_found_rows'          => true,
+				'update_post_meta_cache' => false,
+				'update_post_term_cache' => false,
+				'fields'                 => 'ids',
+			)
+		);
+
+		$scored = array();
+
+		foreach ( $query->posts as $id ) {
+			$id = (int) $id;
+
+			$title = get_the_title( $id );
+			$url   = get_permalink( $id );
+
+			if ( ! $title || ! $url ) {
+				continue;
+			}
+
+			// Build the plain-text representation of this post for embedding.
+			$post_plain_text = normalize_content(
+				wp_strip_all_tags(
+					(string) apply_filters( 'the_content', get_post_field( 'post_content', $id ) ) // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
+				)
+			);
+
+			if ( empty( $post_plain_text ) ) {
+				// Fall back to the title when the post has no content to embed.
+				$post_plain_text = sanitize_text_field( $title );
+			}
+
+			$embedding = $this->get_embedding_for_text( $post_plain_text );
+
+			if ( is_wp_error( $embedding ) ) {
+				// Skip posts whose embeddings fail; do not abort the whole request.
+				continue;
+			}
+
+			$scored[] = array(
+				'score' => $this->cosine_similarity( $content_embedding, $embedding ),
+				'url'   => esc_url_raw( $url ),
+				'title' => sanitize_text_field( $title ),
+			);
+		}
+
+		if ( empty( $scored ) ) {
+			return array();
+		}
+
+		// Sort descending by similarity score.
+		usort(
+			$scored,
+			static function ( array $a, array $b ): int {
+				return $b['score'] <=> $a['score'];
+			}
+		);
+
+		// Return only the top candidates, without the internal score field.
+		$top = array_slice( $scored, 0, self::EMBEDDING_CANDIDATE_LIMIT );
+
+		return array_map(
+			static function ( array $entry ): array {
+				return array(
+					'url'   => $entry['url'],
+					'title' => $entry['title'],
+				);
+			},
+			$top
+		);
+	}
+
+	/**
 	 * Returns the JSON schema used for structured output generation.
 	 *
 	 * @since x.x.x
@@ -300,68 +468,25 @@ class Internal_Links extends Abstract_Ability {
 	}
 
 	/**
-	 * Builds a compact site index of published posts and pages for the AI prompt.
-	 *
-	 * Excludes the current post being edited.
-	 *
-	 * @since x.x.x
-	 *
-	 * @param int $exclude_post_id The ID of the post currently being edited.
-	 * @return list<array{url: string, title: string}> List of linkable posts.
-	 */
-	private function build_site_index( int $exclude_post_id ): array {
-		$query = new WP_Query(
-			array(
-				'post_type'              => array( 'post', 'page' ),
-				'post_status'            => 'publish',
-				'posts_per_page'         => self::SITE_INDEX_LIMIT,
-				'post__not_in'           => $exclude_post_id ? array( $exclude_post_id ) : array(), // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_post__not_in, WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_post__not_in
-				'no_found_rows'          => true,
-				'update_post_meta_cache' => false,
-				'update_post_term_cache' => false,
-				'fields'                 => 'ids',
-			)
-		);
-
-		$index = array();
-
-		foreach ( $query->posts as $id ) {
-			$title = get_the_title( $id );
-			$url   = get_permalink( $id );
-
-			if ( ! $title || ! $url ) {
-				continue;
-			}
-
-			$index[] = array(
-				'url'   => esc_url_raw( $url ),
-				'title' => sanitize_text_field( $title ),
-			);
-		}
-
-		return $index;
-	}
-
-	/**
 	 * Builds the prompt string to send to the AI.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string                                   $plain_text        Plain-text post content.
-	 * @param list<array{url: string, title: string}>  $site_index        List of linkable posts.
-	 * @param int                                      $max_suggestions   Maximum number of suggestions.
-	 * @param list<string>                             $excluded_anchors  Anchor texts already hyperlinked in the post.
+	 * @param string                                   $plain_text       Plain-text post content.
+	 * @param list<array{url: string, title: string}>  $candidates       Semantically similar posts (pre-ranked).
+	 * @param int                                      $max_suggestions  Maximum number of suggestions.
+	 * @param list<string>                             $excluded_anchors Anchor texts already hyperlinked in the post.
 	 * @return string The assembled prompt.
 	 */
-	private function create_prompt( string $plain_text, array $site_index, int $max_suggestions, array $excluded_anchors = array() ): string {
+	private function create_prompt( string $plain_text, array $candidates, int $max_suggestions, array $excluded_anchors = array() ): string {
 		$index_lines = array();
-		foreach ( $site_index as $entry ) {
+		foreach ( $candidates as $entry ) {
 			$index_lines[] = sprintf( '- %s <%s>', $entry['title'], $entry['url'] );
 		}
 
 		$parts   = array();
 		$parts[] = '<post-content>' . $plain_text . '</post-content>';
-		$parts[] = '<site-index>' . implode( "\n", $index_lines ) . '</site-index>';
+		$parts[] = '<candidates>' . implode( "\n", $index_lines ) . '</candidates>';
 		$parts[] = '<max-suggestions>' . $max_suggestions . '</max-suggestions>';
 
 		if ( ! empty( $excluded_anchors ) ) {
@@ -406,28 +531,28 @@ class Internal_Links extends Abstract_Ability {
 	 *
 	 * Validation rules:
 	 * - anchor_text must exist verbatim in the plain-text content.
-	 * - url must be present in the site index.
+	 * - url must be present in the candidates list.
 	 * - No duplicate anchor texts or URLs.
 	 * - Capped at max_suggestions.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string                             $raw             Raw JSON string from the AI.
-	 * @param string                             $plain_text      Plain-text post content.
-	 * @param list<array{url: string, title: string}> $site_index List of linkable posts.
-	 * @param int                                $max_suggestions Maximum number of suggestions.
+	 * @param string                                   $raw             Raw JSON string from the AI.
+	 * @param string                                   $plain_text      Plain-text post content.
+	 * @param list<array{url: string, title: string}>  $candidates      Semantically similar posts passed to the LLM.
+	 * @param int                                      $max_suggestions Maximum number of suggestions.
 	 * @return list<array{anchor_text: string, url: string, title: string, context: string}>
 	 */
-	private function parse_and_validate_response( string $raw, string $plain_text, array $site_index, int $max_suggestions ): array {
+	private function parse_and_validate_response( string $raw, string $plain_text, array $candidates, int $max_suggestions ): array {
 		$decoded = json_decode( $raw, true );
 
 		if ( ! is_array( $decoded ) || ! isset( $decoded['suggestions'] ) || ! is_array( $decoded['suggestions'] ) ) {
 			return array();
 		}
 
-		// Build a fast URL lookup set from the site index.
+		// Build a fast URL lookup set from the candidates list.
 		$valid_urls = array();
-		foreach ( $site_index as $entry ) {
+		foreach ( $candidates as $entry ) {
 			$valid_urls[ $entry['url'] ] = true;
 		}
 
@@ -462,7 +587,7 @@ class Internal_Links extends Abstract_Ability {
 				continue;
 			}
 
-			// URL must come from the site index.
+			// URL must come from the candidates list.
 			if ( ! isset( $valid_urls[ $url ] ) ) {
 				continue;
 			}

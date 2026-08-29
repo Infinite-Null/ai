@@ -41,7 +41,7 @@ class Internal_Links extends Abstract_Feature {
 	protected function load_metadata(): array {
 		return array(
 			'label'       => __( 'Internal Link Suggestions', 'ai' ),
-			'description' => __( 'Suggests relevant internal links within post content, using existing text as anchor text. All suggestions require editor review before being applied. Requires an AI connector that includes support for text generation models.', 'ai' ),
+			'description' => __( 'Suggests relevant internal links within post content, using existing text as anchor text. All suggestions require editor review before being applied. Requires an AI connector that includes support for text generation and embedding models.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
 		);
 	}
