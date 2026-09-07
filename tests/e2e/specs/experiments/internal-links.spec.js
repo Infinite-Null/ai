@@ -80,7 +80,7 @@ test.describe( 'Internal Link Suggestions Experiment', () => {
 		).toBeVisible( { timeout: 15000 } );
 		await expect(
 			page.locator( '.ai-internal-links__suggestions-header' )
-		).toHaveText( '1 suggestion(s) found.' );
+		).toHaveText( '1 suggestion found.' );
 
 		const suggestionItem = page.locator( '.ai-internal-links__suggestion' );
 		await expect( suggestionItem ).toBeVisible();
@@ -137,7 +137,7 @@ test.describe( 'Internal Link Suggestions Experiment', () => {
 		await expect(
 			page.locator( '.ai-internal-links__plugin-description' )
 		).toHaveText(
-			'Internal Link Suggestions will be available when the post content has at least 75 characters.'
+			'Internal Link Suggestions will be available when the content has at least 75 characters.'
 		);
 	} );
 
