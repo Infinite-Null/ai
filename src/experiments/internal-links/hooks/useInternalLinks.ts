@@ -114,10 +114,47 @@ function flattenAll( blocks: Block[] ): Block[] {
 }
 
 /**
+ * Builds a regex pattern from anchor text that tolerates inline HTML tags
+ * between words.
+ *
+ * Each word in the anchor is escaped for regex use, then joined with a
+ * pattern that allows optional whitespace and inline HTML tags between them.
+ * This lets the regex match phrases like "customer support team" even when the
+ * raw HTML is `<strong>customer support</strong> team`.
+ *
+ * If the anchor is a single token (no spaces), the pattern is just the
+ * escaped literal — no tag-tolerance needed.
+ *
+ * @param anchorText The anchor text to match.
+ * @return A RegExp that matches the anchor across inline tag boundaries.
+ */
+function buildAnchorRegex( anchorText: string ): RegExp {
+	// Escape every regex-special character in each word individually, then
+	// join words with a pattern that allows any number of inline HTML tags
+	// (and surrounding whitespace) between them.
+	const TAG_GAP = '(?:\\s*(?:<[^>]*>\\s*)*)';
+	const escapedWords = anchorText
+		.split( /(\s+)/ )
+		.filter( ( part ) => part.trim().length > 0 )
+		.map( ( word ) => word.replace( /[.*+?^${}()|[\]\\]/g, '\\$&' ) );
+
+	const pattern =
+		escapedWords.length > 1
+			? escapedWords.join( TAG_GAP )
+			: escapedWords[ 0 ];
+
+	return new RegExp( pattern, '' );
+}
+
+/**
  * Applies an internal link suggestion to the block editor.
  *
- * Finds the first block whose plain-text content contains the anchor text
- * and wraps that first occurrence in an HTML <a> tag.
+ * Finds the first block whose plain-text content contains the anchor text,
+ * then locates the phrase in the raw HTML (tolerating inline tags between
+ * words) and wraps the matched span in an `<a>` tag.
+ *
+ * Falls back silently if the pattern cannot match in raw HTML (e.g. a tag
+ * splits a word mid-character), rather than writing back an unchanged string.
  *
  * @param suggestion The accepted link suggestion.
  * @param blocks     All blocks in the editor.
@@ -132,19 +169,25 @@ function applyLinkToBlock( suggestion: LinkSuggestion, blocks: Block[] ): void {
 		);
 		const plainContent = stripTags( rawContent );
 
+		// Gate: anchor must exist in plain text first (fast, no-HTML check).
 		if ( ! plainContent.includes( anchorText ) ) {
 			continue;
 		}
 
-		const escapedAnchor = anchorText.replace(
-			/[.*+?^${}()|[\]\\]/g,
-			'\\$&'
-		);
-		const regex = new RegExp( `(${ escapedAnchor })`, '' );
+		// Build a word-level regex that tolerates inline HTML tags between
+		// words so phrases spanning tag boundaries (e.g. `<strong>foo
+		// bar</strong> baz`) can still be matched and wrapped.
+		const regex = buildAnchorRegex( anchorText );
 		const updatedHtml = rawContent.replace(
 			regex,
-			`<a href="${ url }">${ anchorText }</a>`
+			`<a href="${ url }">$&</a>`
 		);
+
+		// If nothing changed the regex didn't match in raw HTML (e.g. a tag
+		// splits mid-word). Skip rather than dispatching a no-op update.
+		if ( updatedHtml === rawContent ) {
+			continue;
+		}
 
 		const attributeKey =
 			'content' in block.attributes ? 'content' : 'value';

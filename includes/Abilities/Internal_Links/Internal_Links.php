@@ -231,7 +231,7 @@ class Internal_Links extends Abstract_Ability {
 			return array( 'suggestions' => array() );
 		}
 
-		$suggestions = $this->parse_and_validate_response( (string) $raw, $plain_text, $candidates, $max_suggestions );
+		$suggestions = $this->parse_and_validate_response( (string) $raw, $plain_text, $candidates, $max_suggestions, $excluded_anchors );
 
 		return array( 'suggestions' => $suggestions );
 	}
@@ -533,17 +533,19 @@ class Internal_Links extends Abstract_Ability {
 	 * - anchor_text must exist verbatim in the plain-text content.
 	 * - url must be present in the candidates list.
 	 * - No duplicate anchor texts or URLs.
+	 * - anchor_text must not appear in the excluded_anchors list.
 	 * - Capped at max_suggestions.
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string                                   $raw             Raw JSON string from the AI.
-	 * @param string                                   $plain_text      Plain-text post content.
-	 * @param list<array{url: string, title: string}>  $candidates      Semantically similar posts passed to the LLM.
-	 * @param int                                      $max_suggestions Maximum number of suggestions.
+	 * @param string                                   $raw              Raw JSON string from the AI.
+	 * @param string                                   $plain_text       Plain-text post content.
+	 * @param list<array{url: string, title: string}>  $candidates       Semantically similar posts passed to the LLM.
+	 * @param int                                      $max_suggestions  Maximum number of suggestions.
+	 * @param list<string>                             $excluded_anchors Anchor texts already hyperlinked in the post.
 	 * @return list<array{anchor_text: string, url: string, title: string, context: string}>
 	 */
-	private function parse_and_validate_response( string $raw, string $plain_text, array $candidates, int $max_suggestions ): array {
+	private function parse_and_validate_response( string $raw, string $plain_text, array $candidates, int $max_suggestions, array $excluded_anchors = array() ): array {
 		$decoded = json_decode( $raw, true );
 
 		if ( ! is_array( $decoded ) || ! isset( $decoded['suggestions'] ) || ! is_array( $decoded['suggestions'] ) ) {
@@ -554,6 +556,12 @@ class Internal_Links extends Abstract_Ability {
 		$valid_urls = array();
 		foreach ( $candidates as $entry ) {
 			$valid_urls[ $entry['url'] ] = true;
+		}
+
+		// Build a fast case-insensitive lookup set from the excluded anchors list.
+		$excluded_anchors_lower = array();
+		foreach ( $excluded_anchors as $excluded ) {
+			$excluded_anchors_lower[ mb_strtolower( $excluded ) ] = true;
 		}
 
 		$suggestions  = array();
@@ -589,6 +597,11 @@ class Internal_Links extends Abstract_Ability {
 
 			// URL must come from the candidates list.
 			if ( ! isset( $valid_urls[ $url ] ) ) {
+				continue;
+			}
+
+			// Anchor text must not be in the already-linked exclusion list.
+			if ( isset( $excluded_anchors_lower[ mb_strtolower( $anchor_text ) ] ) ) {
 				continue;
 			}
 
