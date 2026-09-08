@@ -141,7 +141,7 @@ function buildAnchorRegex( anchorText: string ): RegExp {
 	const pattern =
 		escapedWords.length > 1
 			? escapedWords.join( TAG_GAP )
-			: escapedWords[ 0 ];
+			: escapedWords[ 0 ] ?? '';
 
 	return new RegExp( pattern, '' );
 }
@@ -158,8 +158,9 @@ function buildAnchorRegex( anchorText: string ): RegExp {
  *
  * @param suggestion The accepted link suggestion.
  * @param blocks     All blocks in the editor.
+ * @return True if the link was successfully inserted, false otherwise.
  */
-function applyLinkToBlock( suggestion: LinkSuggestion, blocks: Block[] ): void {
+function applyLinkToBlock( suggestion: LinkSuggestion, blocks: Block[] ): boolean {
 	const flat = flattenAll( blocks );
 	const { anchor_text: anchorText, url } = suggestion;
 
@@ -196,8 +197,10 @@ function applyLinkToBlock( suggestion: LinkSuggestion, blocks: Block[] ): void {
 			[ attributeKey ]: updatedHtml,
 		} );
 
-		return;
+		return true;
 	}
+
+	return false;
 }
 
 /**
@@ -292,21 +295,35 @@ export function useInternalLinks(): {
 
 	const acceptSuggestion = ( suggestion: LinkSuggestion ) => {
 		const blocks = select( blockEditorStore ).getBlocks() as Block[];
+		const applied = applyLinkToBlock( suggestion, blocks );
 
-		applyLinkToBlock( suggestion, blocks );
+		if ( applied ) {
+			// Remove from the list only on confirmed insertion.
+			setSuggestions( ( prev ) =>
+				prev.filter( ( s ) => s.anchor_text !== suggestion.anchor_text )
+			);
 
-		// Remove the accepted suggestion from the list.
-		setSuggestions( ( prev ) =>
-			prev.filter( ( s ) => s.anchor_text !== suggestion.anchor_text )
-		);
-
-		dispatch( noticesStore ).createSuccessNotice(
-			__(
-				'Internal link applied. Save the post to keep the change.',
-				'ai'
-			),
-			{ type: 'snackbar' }
-		);
+			dispatch( noticesStore ).createSuccessNotice(
+				__(
+					'Internal link applied. Save the post to keep the change.',
+					'ai'
+				),
+				{ type: 'snackbar' }
+			);
+		} else {
+			// Anchor text could not be located in the block content — leave the
+			// suggestion visible so the editor can dismiss it manually.
+			dispatch( noticesStore ).createErrorNotice(
+				__(
+					'Could not insert the link automatically. The anchor text may no longer exist in the post content.',
+					'ai'
+				),
+				{
+					id: NOTICE_ID,
+					isDismissible: true,
+				}
+			);
+		}
 	};
 
 	const dismissSuggestion = ( suggestion: LinkSuggestion ) => {
