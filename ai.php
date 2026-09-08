@@ -75,12 +75,6 @@ constants();
 require_once WPAI_PLUGIN_DIR . 'includes/autoload.php';
 
 // Register the vendored PHP AI Client SDK overlay before any AI operation runs.
-/**
- * Enable the SDK overlay so that the vendored EmbeddingBuilder and related
- * classes are available when the environment's SDK does not yet ship them.
- * This is required by the Internal Link Suggestions experiment.
- */
-// phpcs:ignore Squiz.PHP.CommentedOutCode.Found
 \WordPress\AI\SDK_Overlay::register();
 
 \WordPress\AI\Main::get_instance();
