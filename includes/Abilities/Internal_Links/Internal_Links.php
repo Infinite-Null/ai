@@ -215,6 +215,7 @@ class Internal_Links extends Abstract_Ability {
 		}
 
 		$prompt         = $this->create_prompt( $plain_text, $candidates, $max_suggestions, $excluded_anchors );
+		$prompt         = $this->filter_prompt( $prompt, $plain_text, $max_suggestions );
 		$prompt_builder = $this->get_prompt_builder( $prompt );
 
 		if ( is_wp_error( $prompt_builder ) ) {
@@ -368,26 +369,24 @@ class Internal_Links extends Abstract_Ability {
 				'no_found_rows'          => true,
 				'update_post_meta_cache' => false,
 				'update_post_term_cache' => false,
-				'fields'                 => 'ids',
 			)
 		);
 
 		$scored = array();
 
-		foreach ( $query->posts as $id ) {
-			$id = (int) $id;
+		foreach ( $query->posts as $post ) {
+			// Full post objects are already in the cache — no extra DB round-trips.
+			$title = $post->post_title;
+			$url   = get_permalink( $post );
 
-			$title = get_the_title( $id );
-			$url   = get_permalink( $id );
-
-			if ( ! $title || ! $url ) {
+			if ( false === $url || '' === $title || '' === $url ) {
 				continue;
 			}
 
 			// Build the plain-text representation of this post for embedding.
 			$post_plain_text = normalize_content(
 				wp_strip_all_tags(
-					(string) apply_filters( 'the_content', get_post_field( 'post_content', $id ) ) // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
+					(string) apply_filters( 'the_content', $post->post_content ) // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
 				)
 			);
 
@@ -513,12 +512,7 @@ class Internal_Links extends Abstract_Ability {
 			->using_system_instruction( $this->get_system_instruction() )
 			->as_json_response( $this->suggestions_schema() );
 
-		$config = \WordPress\AI\get_feature_developer_model_config( Internal_Links_Experiment::get_id() );
-		if ( ! empty( $config['provider'] ) && ! empty( $config['model'] ) ) {
-			$prompt_builder->using_model_preference( array( $config['provider'], $config['model'] ) );
-		} else {
-			$prompt_builder->using_model_preference( ...\WordPress\AI\get_preferred_models_for_text_generation() );
-		}
+		$prompt_builder = $this->filter_prompt_builder( $prompt_builder, Internal_Links_Experiment::class, array(), $prompt );
 
 		return $this->ensure_text_generation_supported(
 			$prompt_builder,
@@ -575,12 +569,12 @@ class Internal_Links extends Abstract_Ability {
 
 			if (
 				! is_array( $item ) ||
-				empty( $item['anchor_text'] ) ||
-				empty( $item['url'] ) ||
-				empty( $item['title'] ) ||
-				! is_string( $item['anchor_text'] ) ||
-				! is_string( $item['url'] ) ||
-				! is_string( $item['title'] )
+				! is_string( $item['anchor_text'] ?? null ) ||
+				! is_string( $item['url'] ?? null ) ||
+				! is_string( $item['title'] ?? null ) ||
+				'' === trim( $item['anchor_text'] ) ||
+				'' === trim( $item['url'] ) ||
+				'' === trim( $item['title'] )
 			) {
 				continue;
 			}

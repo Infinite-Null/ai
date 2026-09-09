@@ -14,6 +14,12 @@ import { __ } from '@wordpress/i18n';
 import { runAbility } from '../../../utils/run-ability';
 import { ensureProvider } from '../../../utils/provider-status';
 import { hasMinimumContent } from '../../../utils/character-count';
+import {
+	flattenBlocks,
+	getBlockHTML,
+	getEditableTextAttribute,
+	type BlockWithContent,
+} from '../../../utils/blocks';
 
 const NOTICE_ID = 'ai_internal_links_error';
 const MINIMUM_CONTENT_COUNT_DEFAULT = 75;
@@ -32,6 +38,7 @@ interface SuggestionResponse {
 interface BlockAttributes {
 	content?: unknown;
 	value?: unknown;
+	alt?: unknown;
 	[ key: string ]: unknown;
 }
 
@@ -40,27 +47,6 @@ interface Block {
 	name: string;
 	attributes: BlockAttributes;
 	innerBlocks: Block[];
-}
-
-/**
- * Converts a RichText attribute value (string or object) to a plain string.
- *
- * @param value Attribute value.
- * @return Plain text string.
- */
-function toPlainString( value: unknown ): string {
-	if ( typeof value === 'string' ) {
-		return value;
-	}
-	if (
-		value &&
-		typeof value === 'object' &&
-		'text' in value &&
-		typeof ( value as { text?: unknown } ).text === 'string'
-	) {
-		return ( value as { text: string } ).text;
-	}
-	return '';
 }
 
 /**
@@ -95,22 +81,6 @@ function getLinkedAnchorTexts( html: string ): Set< string > {
 		}
 	} );
 	return linked;
-}
-
-/**
- * Recursively flattens a block tree.
- *
- * @param blocks Top-level blocks.
- * @return Flat array of all blocks.
- */
-function flattenAll( blocks: Block[] ): Block[] {
-	return blocks.reduce< Block[] >( ( acc, block ) => {
-		acc.push( block );
-		if ( block.innerBlocks?.length ) {
-			acc.push( ...flattenAll( block.innerBlocks ) );
-		}
-		return acc;
-	}, [] );
 }
 
 /**
@@ -161,13 +131,19 @@ function buildAnchorRegex( anchorText: string ): RegExp {
  * @return True if the link was successfully inserted, false otherwise.
  */
 function applyLinkToBlock( suggestion: LinkSuggestion, blocks: Block[] ): boolean {
-	const flat = flattenAll( blocks );
+	const flat = flattenBlocks( blocks );
 	const { anchor_text: anchorText, url } = suggestion;
 
 	for ( const block of flat ) {
-		const rawContent = toPlainString(
-			block.attributes.content ?? block.attributes.value ?? ''
+		const attributeKey = getEditableTextAttribute(
+			block as BlockWithContent
 		);
+
+		if ( ! attributeKey ) {
+			continue;
+		}
+
+		const rawContent = getBlockHTML( block as BlockWithContent );
 		const plainContent = stripTags( rawContent );
 
 		// Gate: anchor must exist in plain text first (fast, no-HTML check).
@@ -189,9 +165,6 @@ function applyLinkToBlock( suggestion: LinkSuggestion, blocks: Block[] ): boolea
 		if ( updatedHtml === rawContent ) {
 			continue;
 		}
-
-		const attributeKey =
-			'content' in block.attributes ? 'content' : 'value';
 
 		dispatch( blockEditorStore ).updateBlockAttributes( block.clientId, {
 			[ attributeKey ]: updatedHtml,
