@@ -22,7 +22,8 @@
 	overflow: visible !important;
 }
 
-#wpai-suggest-reply-btn {
+#wpai-suggest-reply-btn,
+#wpai-suggest-reply-edit-btn {
 	margin-right: 0 !important;
 }
 
@@ -103,5 +104,16 @@
 			visibility: visible;
 			color: var(--wp-admin-theme-color, #3858e9);
 		}
+	}
+}
+
+/* Edit comment page controls wrapper */
+.wpai-suggest-reply-edit-controls-wrapper {
+	margin-top: 10px;
+	display: block;
+	overflow: visible;
+
+	.wpai-split-button {
+		vertical-align: middle;
 	}
 }

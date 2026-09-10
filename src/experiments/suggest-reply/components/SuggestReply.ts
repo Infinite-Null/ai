@@ -453,6 +453,11 @@ function openReplyFormThen( commentId: number, callback: () => void ): void {
  * "Suggest reply" row action link immediately opens the reply form and starts
  * AI generation.
  */
+/**
+ * Attaches a delegated click listener on the comment list so that clicking a
+ * "Suggest reply" row action link immediately opens the reply form and starts
+ * AI generation.
+ */
 export function init(): void {
 	const commentList = document.querySelector( '#the-comment-list' );
 
@@ -490,4 +495,330 @@ export function init(): void {
 			void generateAndInsertReply( commentId );
 		}
 	} );
+}
+
+const EDIT_ERROR_NOTICE_ID = 'wpai-suggest-reply-edit-error';
+const EDIT_CONTROLS_WRAPPER_ID = 'wpai-suggest-reply-edit-controls';
+const EDIT_SUGGEST_BTN_ID = 'wpai-suggest-reply-edit-btn';
+
+/** Writes text into the edit-comment page textarea (#content). */
+function populateEditTextarea( text: string ): void {
+	const textarea =
+		document.querySelector< HTMLTextAreaElement >( '#content' );
+
+	if ( ! textarea ) {
+		return;
+	}
+
+	textarea.value = text;
+	textarea.dispatchEvent( new Event( 'input', { bubbles: true } ) );
+	textarea.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+
+	const win = window as unknown as {
+		tinymce?: {
+			get: (
+				id: string
+			) => { setContent: ( content: string ) => void } | null;
+		};
+	};
+	if ( win.tinymce?.get( 'content' ) ) {
+		win.tinymce.get( 'content' )?.setContent( text );
+	}
+}
+
+/** Sets or clears a placeholder on the edit-comment page textarea. */
+function setEditTextareaPlaceholder( message: string ): void {
+	const textarea =
+		document.querySelector< HTMLTextAreaElement >( '#content' );
+
+	if ( textarea ) {
+		textarea.placeholder = message;
+	}
+}
+
+/** Disables / re-enables the edit-page textarea, Update button and our controls. */
+function setEditFormDisabled( disabled: boolean ): void {
+	const elements: Array<
+		HTMLTextAreaElement | HTMLButtonElement | HTMLInputElement | null
+	> = [
+		document.querySelector< HTMLTextAreaElement >( '#content' ),
+		document.querySelector< HTMLInputElement >( '#save' ),
+		document.getElementById(
+			EDIT_SUGGEST_BTN_ID
+		) as HTMLButtonElement | null,
+		document.querySelector< HTMLButtonElement >(
+			`#${ EDIT_CONTROLS_WRAPPER_ID } .wpai-split-button__toggle`
+		),
+	];
+
+	document
+		.querySelectorAll< HTMLButtonElement >(
+			`#${ EDIT_CONTROLS_WRAPPER_ID } .wpai-dropdown-item`
+		)
+		.forEach( ( item ) => elements.push( item ) );
+
+	document
+		.querySelectorAll< HTMLInputElement | HTMLButtonElement >(
+			'#qt_content_toolbar .ed_button'
+		)
+		.forEach( ( item ) => {
+			if (
+				item instanceof HTMLInputElement ||
+				item instanceof HTMLButtonElement
+			) {
+				elements.push( item );
+			}
+		} );
+
+	elements.forEach( ( el ) => {
+		if ( el ) {
+			el.disabled = disabled;
+		}
+	} );
+}
+
+/** Removes any previously injected error notice on the edit page. */
+function clearEditErrorNotice(): void {
+	document.getElementById( EDIT_ERROR_NOTICE_ID )?.remove();
+}
+
+/** Shows an error notice below our controls on the edit page. */
+function showEditErrorNotice( message: string ): void {
+	clearEditErrorNotice();
+
+	const container = document.getElementById( EDIT_CONTROLS_WRAPPER_ID );
+
+	if ( ! container ) {
+		return;
+	}
+
+	const notice = document.createElement( 'div' );
+	notice.id = EDIT_ERROR_NOTICE_ID;
+	notice.className =
+		'notice notice-error notice-alt inline wpai-suggest-reply-error';
+
+	const p = document.createElement( 'p' );
+	p.textContent = message;
+	notice.appendChild( p );
+
+	container.appendChild( notice );
+}
+
+/** Sets the edit-page Suggest Reply button into a loading / idle state. */
+function setEditSuggestBtnLoading( loading: boolean ): void {
+	const btn = document.getElementById(
+		EDIT_SUGGEST_BTN_ID
+	) as HTMLButtonElement | null;
+
+	if ( btn ) {
+		btn.disabled = loading;
+		btn.textContent = loading ? LOADING_TEXT : SUGGEST_BTN_TEXT;
+	}
+
+	if ( loading ) {
+		const dropdownMenu = document.querySelector< HTMLElement >(
+			`#${ EDIT_CONTROLS_WRAPPER_ID } .wpai-split-button__dropdown`
+		);
+		const toggleBtn = document.querySelector< HTMLButtonElement >(
+			`#${ EDIT_CONTROLS_WRAPPER_ID } .wpai-split-button__toggle`
+		);
+
+		if ( dropdownMenu ) {
+			dropdownMenu.hidden = true;
+		}
+		if ( toggleBtn ) {
+			toggleBtn.setAttribute( 'aria-expanded', 'false' );
+		}
+	}
+}
+
+/** Returns the tone currently selected in the edit-page split button dropdown. */
+function getEditSelectedTone(): Tone {
+	const container = document.querySelector< HTMLElement >(
+		`#${ EDIT_CONTROLS_WRAPPER_ID } .wpai-split-button`
+	);
+
+	return ( container?.getAttribute( TONE_ATTR ) as Tone ) ?? DEFAULT_TONE;
+}
+
+/**
+ * Creates a split-button specifically wired for the edit-comment page.
+ * Clicking the main action button triggers generation into #content.
+ */
+function createEditPageSplitButtonControls( commentId: number ): HTMLElement {
+	let currentTone: Tone = DEFAULT_TONE;
+
+	const container = document.createElement( 'div' );
+	container.className = 'wpai-split-button';
+	container.setAttribute( TONE_ATTR, currentTone );
+
+	const actionBtn = document.createElement( 'button' );
+	actionBtn.id = EDIT_SUGGEST_BTN_ID;
+	actionBtn.type = 'button';
+	actionBtn.className = 'button wpai-split-button__action';
+	actionBtn.textContent = SUGGEST_BTN_TEXT;
+
+	actionBtn.addEventListener( 'click', () => {
+		void runGenerationEditPage( commentId );
+	} );
+
+	const toggleBtn = document.createElement( 'button' );
+	toggleBtn.type = 'button';
+	toggleBtn.className = 'button wpai-split-button__toggle';
+	toggleBtn.setAttribute( 'aria-expanded', 'false' );
+	toggleBtn.setAttribute( 'aria-haspopup', 'true' );
+	toggleBtn.setAttribute( 'aria-label', __( 'Change reply tone', 'ai' ) );
+	toggleBtn.innerHTML =
+		'<span class="dashicons dashicons-arrow-down-alt2"></span>';
+
+	const dropdownMenu = document.createElement( 'div' );
+	dropdownMenu.className = 'wpai-split-button__dropdown';
+	dropdownMenu.hidden = true;
+
+	const updateSelectionUI = () => {
+		dropdownMenu
+			.querySelectorAll( '.wpai-dropdown-item' )
+			.forEach( ( item ) => {
+				if ( item.getAttribute( TONE_ATTR ) === currentTone ) {
+					item.classList.add( 'is-selected' );
+					item.setAttribute( 'aria-selected', 'true' );
+				} else {
+					item.classList.remove( 'is-selected' );
+					item.setAttribute( 'aria-selected', 'false' );
+				}
+			} );
+
+		container.setAttribute( TONE_ATTR, currentTone );
+	};
+
+	TONE_OPTIONS.forEach( ( { label, value } ) => {
+		const itemBtn = document.createElement( 'button' );
+		itemBtn.type = 'button';
+		itemBtn.className = 'wpai-dropdown-item';
+		itemBtn.setAttribute( TONE_ATTR, value );
+		itemBtn.innerHTML = `<span class="dashicons dashicons-yes wpai-selected-icon"></span> ${ label }`;
+
+		itemBtn.addEventListener( 'click', () => {
+			currentTone = value as Tone;
+			updateSelectionUI();
+			dropdownMenu.hidden = true;
+			toggleBtn.setAttribute( 'aria-expanded', 'false' );
+			toggleBtn.focus();
+		} );
+
+		dropdownMenu.appendChild( itemBtn );
+	} );
+
+	updateSelectionUI();
+
+	toggleBtn.addEventListener( 'click', () => {
+		const isExpanded = toggleBtn.getAttribute( 'aria-expanded' ) === 'true';
+		toggleBtn.setAttribute(
+			'aria-expanded',
+			isExpanded ? 'false' : 'true'
+		);
+
+		dropdownMenu.hidden = isExpanded;
+	} );
+
+	container.addEventListener( 'keydown', ( event ) => {
+		if ( event.key !== 'Escape' || dropdownMenu.hidden ) {
+			return;
+		}
+
+		dropdownMenu.hidden = true;
+		toggleBtn.setAttribute( 'aria-expanded', 'false' );
+		toggleBtn.focus();
+	} );
+
+	document.addEventListener( 'click', ( e ) => {
+		if ( ! container.contains( e.target as Node ) ) {
+			dropdownMenu.hidden = true;
+			toggleBtn.setAttribute( 'aria-expanded', 'false' );
+		}
+	} );
+
+	container.appendChild( actionBtn );
+	container.appendChild( toggleBtn );
+	container.appendChild( dropdownMenu );
+
+	return container;
+}
+
+/**
+ * Injects the Suggest Reply split-button below the editor on the Edit Comment page.
+ */
+function injectEditPageControls( commentId: number ): void {
+	if ( document.getElementById( EDIT_CONTROLS_WRAPPER_ID ) ) {
+		return;
+	}
+
+	// On comment.php?action=editcomment, the editor container is #postdiv (or #postdivrich).
+	const editorContainer =
+		document.querySelector< HTMLElement >( '#postdiv' ) ??
+		document.querySelector< HTMLElement >( '#postdivrich' ) ??
+		document.querySelector< HTMLElement >( '#wp-content-wrap' ) ??
+		document.querySelector< HTMLElement >( '#content' );
+
+	if ( ! editorContainer ) {
+		return;
+	}
+
+	const wrapper = document.createElement( 'div' );
+	wrapper.id = EDIT_CONTROLS_WRAPPER_ID;
+	wrapper.className =
+		'wpai-suggest-reply-controls wpai-suggest-reply-edit-controls-wrapper';
+
+	wrapper.appendChild( createEditPageSplitButtonControls( commentId ) );
+
+	// Insert right after the editor container.
+	editorContainer.insertAdjacentElement( 'afterend', wrapper );
+}
+
+/**
+ * Generation logic for the Edit Comment page.
+ * Calls the AI ability with the comment ID and selected tone,
+ * then populates the #content textarea.
+ */
+async function runGenerationEditPage( commentId: number ): Promise< void > {
+	const tone = getEditSelectedTone();
+
+	clearEditErrorNotice();
+	setEditTextareaPlaceholder( LOADING_PLACEHOLDER );
+	setEditFormDisabled( true );
+	setEditSuggestBtnLoading( true );
+
+	try {
+		const result = await runAbility< string >( 'ai/suggest-reply', {
+			comment_id: commentId,
+			tone,
+		} );
+
+		setEditTextareaPlaceholder( '' );
+		populateEditTextarea( result ?? '' );
+	} catch ( err: any ) {
+		setEditTextareaPlaceholder( '' );
+
+		const message = err?.message ? err.message : GENERIC_ERROR_MESSAGE;
+
+		showEditErrorNotice( message );
+	} finally {
+		setEditFormDisabled( false );
+		setEditSuggestBtnLoading( false );
+
+		// Return focus to the textarea after re-enabling.
+		const textarea =
+			document.querySelector< HTMLTextAreaElement >( '#content' );
+		textarea?.focus();
+	}
+}
+
+/**
+ * Initialises the Suggest Reply feature on the Edit Comment admin page
+ * (comment.php?action=editcomment).
+ *
+ * @param commentId The ID of the comment being edited.
+ */
+export function initEditPage( commentId: number ): void {
+	injectEditPageControls( commentId );
 }

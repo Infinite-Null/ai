@@ -111,7 +111,8 @@ class Suggest_Reply extends Abstract_Feature {
 	 * @param string $hook_suffix The current admin page hook suffix.
 	 */
 	public function enqueue_assets( string $hook_suffix ): void {
-		if ( ! in_array( $hook_suffix, array( 'edit-comments.php', 'index.php' ), true ) ) {
+		$allowed_hooks = array( 'edit-comments.php', 'index.php', 'comment.php' );
+		if ( ! in_array( $hook_suffix, $allowed_hooks, true ) ) {
 			return;
 		}
 
@@ -121,10 +122,25 @@ class Suggest_Reply extends Abstract_Feature {
 			array( 'include_core_abilities' => true )
 		);
 		Asset_Loader::enqueue_style( 'suggest_reply', 'experiments/suggest-reply' );
+
+		$localize_data = array( 'enabled' => $this->is_enabled() );
+
+		if ( 'comment.php' === $hook_suffix ) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$action     = isset( $_GET['action'] ) ? sanitize_key( $_GET['action'] ) : '';
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$comment_id = isset( $_GET['c'] ) ? absint( $_GET['c'] ) : 0;
+
+			if ( 'editcomment' === $action && $comment_id > 0 ) {
+				$localize_data['is_edit_page'] = true;
+				$localize_data['comment_id']   = $comment_id;
+			}
+		}
+
 		Asset_Loader::localize_script(
 			'suggest_reply',
 			'SuggestReplyData',
-			array( 'enabled' => $this->is_enabled() )
+			$localize_data
 		);
 	}
 }

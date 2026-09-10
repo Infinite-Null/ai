@@ -172,4 +172,29 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 
 		$this->assertFalse( wp_script_is( 'suggest_reply', 'enqueued' ) );
 	}
+
+	/**
+	 * Test enqueue_assets() enqueues assets and localizes data on comment.php edit screen.
+	 *
+	 * @since 1.2.0
+	 */
+	public function test_enqueue_assets_enqueues_on_comment_edit_screen() {
+		$_GET['action'] = 'editcomment';
+		$_GET['c']      = 42;
+
+		$experiment = new Suggest_Reply();
+		$experiment->enqueue_assets( 'comment.php' );
+
+		$this->assertTrue( wp_script_is( 'ai_suggest_reply', 'enqueued' ) );
+		$this->assertTrue( wp_style_is( 'ai_suggest_reply', 'enqueued' ) );
+
+		global $wp_scripts;
+		$localized = $wp_scripts->get_data( 'ai_suggest_reply', 'data' );
+
+		$this->assertStringContainsString( 'is_edit_page', $localized );
+		$this->assertStringContainsString( 'comment_id', $localized );
+		$this->assertStringContainsString( '"comment_id":"42"', $localized );
+
+		unset( $_GET['action'], $_GET['c'] );
+	}
 }
