@@ -131,7 +131,10 @@ function buildAnchorRegex( anchorText: string ): RegExp {
  * @param blocks     All blocks in the editor.
  * @return True if the link was successfully inserted, false otherwise.
  */
-function applyLinkToBlock( suggestion: LinkSuggestion, blocks: Block[] ): boolean {
+function applyLinkToBlock(
+	suggestion: LinkSuggestion,
+	blocks: Block[]
+): boolean {
 	const flat = flattenBlocks( blocks );
 	const { anchor_text: anchorText, url } = suggestion;
 
