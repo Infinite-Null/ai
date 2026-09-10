@@ -8,18 +8,9 @@ import { registerPlugin } from '@wordpress/plugins';
  */
 import InternalLinksPlugin from './components/InternalLinksPlugin';
 import './index.scss';
+import './types.d.ts';
 
-declare global {
-	interface Window {
-		aiInternalLinksData?: {
-			enabled: boolean;
-			minContentLength: number;
-			maxSuggestions: number;
-		};
-	}
-}
-
-if ( ( window as any ).aiInternalLinksData?.enabled ) {
+if ( window.aiInternalLinksData?.enabled ) {
 	registerPlugin( 'ai-internal-links', {
 		render: () => <InternalLinksPlugin />,
 	} );

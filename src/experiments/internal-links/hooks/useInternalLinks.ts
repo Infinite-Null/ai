@@ -20,6 +20,7 @@ import {
 	getEditableTextAttribute,
 	type BlockWithContent,
 } from '../../../utils/blocks';
+import '../types.d.ts';
 
 const NOTICE_ID = 'ai_internal_links_error';
 const MINIMUM_CONTENT_COUNT_DEFAULT = 75;
@@ -193,12 +194,14 @@ export function useInternalLinks(): {
 	const [ isLoading, setIsLoading ] = useState< boolean >( false );
 	const [ suggestions, setSuggestions ] = useState< LinkSuggestion[] >( [] );
 
-	const minContentLength: number =
-		( window as any ).aiInternalLinksData?.minContentLength ??
-		MINIMUM_CONTENT_COUNT_DEFAULT;
+	const minContentLength: number = parseInt(
+		window.aiInternalLinksData?.minContentLength ??
+			String( MINIMUM_CONTENT_COUNT_DEFAULT ),
+		10
+	);
 
 	const maxSuggestions: number = parseInt(
-		( window as any ).aiInternalLinksData?.maxSuggestions ?? 5,
+		window.aiInternalLinksData?.maxSuggestions ?? '5',
 		10
 	);
 

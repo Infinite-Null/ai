@@ -12,6 +12,7 @@ import { link } from '@wordpress/icons';
  */
 import { useInternalLinks } from '../hooks/useInternalLinks';
 import SuggestionList from './SuggestionList';
+import '../types.d.ts';
 
 export default function InternalLinksPlugin() {
 	const {
@@ -29,7 +30,7 @@ export default function InternalLinksPlugin() {
 		'internal-links-plugin-description'
 	);
 
-	if ( ! ( window as any ).aiInternalLinksData?.enabled ) {
+	if ( ! window.aiInternalLinksData?.enabled ) {
 		return null;
 	}
 
