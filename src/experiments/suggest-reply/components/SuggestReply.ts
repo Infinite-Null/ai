@@ -31,6 +31,10 @@ const REPLY_FORM_POLL_TIMEOUT = 1000;
 const INIT_FLAG_ATTR = 'data-wpai-suggest-reply-initialized';
 const TONE_ATTR = 'data-tone';
 
+const EDIT_ERROR_NOTICE_ID = 'wpai-suggest-reply-edit-error';
+const EDIT_CONTROLS_WRAPPER_ID = 'wpai-suggest-reply-edit-controls';
+const EDIT_SUGGEST_BTN_ID = 'wpai-suggest-reply-edit-btn';
+
 const TONE_OPTIONS: { label: string; value: Tone }[] = [
 	{ label: __( 'Friendly', 'ai' ), value: 'friendly' },
 	{ label: __( 'Professional', 'ai' ), value: 'professional' },
@@ -51,11 +55,9 @@ function populateReplyTextarea( text: string ): void {
 	textarea.dispatchEvent( new Event( 'input', { bubbles: true } ) );
 }
 
-/** Sets or clears a placeholder on the inline reply textarea. */
-function setTextareaPlaceholder( message: string ): void {
-	const textarea = document.querySelector< HTMLTextAreaElement >(
-		'#replycontainer #replycontent'
-	);
+/** Sets or clears a placeholder on a textarea. */
+function setTextareaPlaceholder( selector: string, message: string ): void {
+	const textarea = document.querySelector< HTMLTextAreaElement >( selector );
 
 	if ( textarea ) {
 		textarea.placeholder = message;
@@ -100,23 +102,27 @@ function setReplyFormDisabled( disabled: boolean ): void {
 	} );
 }
 
-/** Removes any previously injected error notice. */
-function clearErrorNotice(): void {
-	document.getElementById( ERROR_NOTICE_ID )?.remove();
+/** Removes an injected error notice by ID. */
+function clearErrorNotice( noticeId: string = ERROR_NOTICE_ID ): void {
+	document.getElementById( noticeId )?.remove();
 }
 
-/** Shows an error notice. */
-function showErrorNotice( message: string ): void {
-	clearErrorNotice();
-
-	const container = document.querySelector( '.reply-submit-buttons' );
+/** Shows an error notice within the specified container. */
+function showErrorNotice(
+	message: string,
+	container: Element | null = document.querySelector(
+		'.reply-submit-buttons'
+	),
+	noticeId: string = ERROR_NOTICE_ID
+): void {
+	clearErrorNotice( noticeId );
 
 	if ( ! container ) {
 		return;
 	}
 
 	const notice = document.createElement( 'div' );
-	notice.id = ERROR_NOTICE_ID;
+	notice.id = noticeId;
 	notice.className =
 		'notice notice-error notice-alt inline wpai-suggest-reply-error';
 
@@ -148,11 +154,9 @@ function setLinkLoading( commentId: number, loading: boolean ): void {
 	}
 }
 
-/** Sets the in-editor Suggest Reply button into a loading/idle state. */
-function setSuggestBtnLoading( loading: boolean ): void {
-	const btn = document.getElementById(
-		SUGGEST_BTN_ID
-	) as HTMLButtonElement | null;
+/** Sets a Suggest Reply split-button into a loading/idle state. */
+function setSplitButtonLoading( buttonId: string, loading: boolean ): void {
+	const btn = document.getElementById( buttonId ) as HTMLButtonElement | null;
 
 	if ( btn ) {
 		btn.disabled = loading;
@@ -160,11 +164,11 @@ function setSuggestBtnLoading( loading: boolean ): void {
 	}
 
 	if ( loading ) {
-		// Close the dropdown menu when generation starts
-		const dropdownMenu = document.querySelector< HTMLElement >(
+		const splitBtn = btn?.closest( '.wpai-split-button' );
+		const dropdownMenu = splitBtn?.querySelector< HTMLElement >(
 			'.wpai-split-button__dropdown'
 		);
-		const toggleBtn = document.querySelector< HTMLButtonElement >(
+		const toggleBtn = splitBtn?.querySelector< HTMLButtonElement >(
 			'.wpai-split-button__toggle'
 		);
 
@@ -177,16 +181,25 @@ function setSuggestBtnLoading( loading: boolean ): void {
 	}
 }
 
-/** Returns the tone currently selected in the button dropdown. */
-function getSelectedTone(): Tone {
-	const container =
-		document.querySelector< HTMLElement >( '.wpai-split-button' );
+/** Returns the tone currently selected in the specified split-button container. */
+function getSelectedTone( containerSelector?: string ): Tone {
+	const container = containerSelector
+		? document.querySelector< HTMLElement >( containerSelector )
+		: document.querySelector< HTMLElement >( '.wpai-split-button' );
 
 	return ( container?.getAttribute( TONE_ATTR ) as Tone ) ?? DEFAULT_TONE;
 }
 
-/** Creates the Suggest Reply Button. */
-function createSplitButtonControls(): HTMLElement {
+interface SplitButtonOptions {
+	buttonId: string;
+	onAction: () => void;
+}
+
+/** Creates a reusable Suggest Reply split-button with tone dropdown. */
+function createSplitButton( {
+	buttonId,
+	onAction,
+}: SplitButtonOptions ): HTMLElement {
 	let currentTone: Tone = DEFAULT_TONE;
 
 	const container = document.createElement( 'div' );
@@ -194,21 +207,11 @@ function createSplitButtonControls(): HTMLElement {
 	container.setAttribute( TONE_ATTR, currentTone );
 
 	const actionBtn = document.createElement( 'button' );
-	actionBtn.id = SUGGEST_BTN_ID;
+	actionBtn.id = buttonId;
 	actionBtn.type = 'button';
 	actionBtn.className = 'button wpai-split-button__action';
 	actionBtn.textContent = SUGGEST_BTN_TEXT;
-
-	actionBtn.addEventListener( 'click', () => {
-		const commentIdInput = document.querySelector< HTMLInputElement >(
-			'#replyrow #comment_ID'
-		);
-		const commentId = parseInt( commentIdInput?.value ?? '0', 10 );
-
-		if ( commentId > 0 ) {
-			void runGenerationFromEditor( commentId );
-		}
-	} );
+	actionBtn.addEventListener( 'click', onAction );
 
 	const toggleBtn = document.createElement( 'button' );
 	toggleBtn.type = 'button';
@@ -296,6 +299,23 @@ function createSplitButtonControls(): HTMLElement {
 	return container;
 }
 
+/** Creates the Suggest Reply button controls for the inline reply form. */
+function createSplitButtonControls(): HTMLElement {
+	return createSplitButton( {
+		buttonId: SUGGEST_BTN_ID,
+		onAction: () => {
+			const commentIdInput = document.querySelector< HTMLInputElement >(
+				'#replyrow #comment_ID'
+			);
+			const commentId = parseInt( commentIdInput?.value ?? '0', 10 );
+
+			if ( commentId > 0 ) {
+				void runGenerationFromEditor( commentId );
+			}
+		},
+	} );
+}
+
 /**
  * Injects the Suggest Reply button and Tone dropdown into the WP inline reply
  * form as a dedicated row below the native Reply / Cancel buttons.
@@ -335,10 +355,13 @@ function injectSuggestReplyControls(): void {
  */
 async function runGeneration( commentId: number, tone: Tone ): Promise< void > {
 	clearErrorNotice();
-	setTextareaPlaceholder( LOADING_PLACEHOLDER );
+	setTextareaPlaceholder(
+		'#replycontainer #replycontent',
+		LOADING_PLACEHOLDER
+	);
 	setReplyFormDisabled( true );
 	setLinkLoading( commentId, true );
-	setSuggestBtnLoading( true );
+	setSplitButtonLoading( SUGGEST_BTN_ID, true );
 
 	try {
 		const result = await runAbility< string >( 'ai/suggest-reply', {
@@ -346,18 +369,21 @@ async function runGeneration( commentId: number, tone: Tone ): Promise< void > {
 			tone,
 		} );
 
-		setTextareaPlaceholder( '' );
+		setTextareaPlaceholder( '#replycontainer #replycontent', '' );
 		populateReplyTextarea( result ?? '' );
 	} catch ( err: any ) {
-		setTextareaPlaceholder( '' );
+		setTextareaPlaceholder( '#replycontainer #replycontent', '' );
 
 		const message = err.message ? err.message : GENERIC_ERROR_MESSAGE;
 
-		showErrorNotice( message );
+		showErrorNotice(
+			message,
+			document.querySelector( '.reply-submit-buttons' )
+		);
 	} finally {
 		setReplyFormDisabled( false );
 		setLinkLoading( commentId, false );
-		setSuggestBtnLoading( false );
+		setSplitButtonLoading( SUGGEST_BTN_ID, false );
 
 		// Focus the textarea after the form controls are re-enabled,
 		// so that focus is not lost due to the element being disabled.
@@ -453,11 +479,6 @@ function openReplyFormThen( commentId: number, callback: () => void ): void {
  * "Suggest reply" row action link immediately opens the reply form and starts
  * AI generation.
  */
-/**
- * Attaches a delegated click listener on the comment list so that clicking a
- * "Suggest reply" row action link immediately opens the reply form and starts
- * AI generation.
- */
 export function init(): void {
 	const commentList = document.querySelector( '#the-comment-list' );
 
@@ -497,10 +518,6 @@ export function init(): void {
 	} );
 }
 
-const EDIT_ERROR_NOTICE_ID = 'wpai-suggest-reply-edit-error';
-const EDIT_CONTROLS_WRAPPER_ID = 'wpai-suggest-reply-edit-controls';
-const EDIT_SUGGEST_BTN_ID = 'wpai-suggest-reply-edit-btn';
-
 /** Writes text into the edit-comment page textarea (#content). */
 function populateEditTextarea( text: string ): void {
 	const textarea =
@@ -523,16 +540,6 @@ function populateEditTextarea( text: string ): void {
 	};
 	if ( win.tinymce?.get( 'content' ) ) {
 		win.tinymce.get( 'content' )?.setContent( text );
-	}
-}
-
-/** Sets or clears a placeholder on the edit-comment page textarea. */
-function setEditTextareaPlaceholder( message: string ): void {
-	const textarea =
-		document.querySelector< HTMLTextAreaElement >( '#content' );
-
-	if ( textarea ) {
-		textarea.placeholder = message;
 	}
 }
 
@@ -577,172 +584,14 @@ function setEditFormDisabled( disabled: boolean ): void {
 	} );
 }
 
-/** Removes any previously injected error notice on the edit page. */
-function clearEditErrorNotice(): void {
-	document.getElementById( EDIT_ERROR_NOTICE_ID )?.remove();
-}
-
-/** Shows an error notice below our controls on the edit page. */
-function showEditErrorNotice( message: string ): void {
-	clearEditErrorNotice();
-
-	const container = document.getElementById( EDIT_CONTROLS_WRAPPER_ID );
-
-	if ( ! container ) {
-		return;
-	}
-
-	const notice = document.createElement( 'div' );
-	notice.id = EDIT_ERROR_NOTICE_ID;
-	notice.className =
-		'notice notice-error notice-alt inline wpai-suggest-reply-error';
-
-	const p = document.createElement( 'p' );
-	p.textContent = message;
-	notice.appendChild( p );
-
-	container.appendChild( notice );
-}
-
-/** Sets the edit-page Suggest Reply button into a loading / idle state. */
-function setEditSuggestBtnLoading( loading: boolean ): void {
-	const btn = document.getElementById(
-		EDIT_SUGGEST_BTN_ID
-	) as HTMLButtonElement | null;
-
-	if ( btn ) {
-		btn.disabled = loading;
-		btn.textContent = loading ? LOADING_TEXT : SUGGEST_BTN_TEXT;
-	}
-
-	if ( loading ) {
-		const dropdownMenu = document.querySelector< HTMLElement >(
-			`#${ EDIT_CONTROLS_WRAPPER_ID } .wpai-split-button__dropdown`
-		);
-		const toggleBtn = document.querySelector< HTMLButtonElement >(
-			`#${ EDIT_CONTROLS_WRAPPER_ID } .wpai-split-button__toggle`
-		);
-
-		if ( dropdownMenu ) {
-			dropdownMenu.hidden = true;
-		}
-		if ( toggleBtn ) {
-			toggleBtn.setAttribute( 'aria-expanded', 'false' );
-		}
-	}
-}
-
-/** Returns the tone currently selected in the edit-page split button dropdown. */
-function getEditSelectedTone(): Tone {
-	const container = document.querySelector< HTMLElement >(
-		`#${ EDIT_CONTROLS_WRAPPER_ID } .wpai-split-button`
-	);
-
-	return ( container?.getAttribute( TONE_ATTR ) as Tone ) ?? DEFAULT_TONE;
-}
-
-/**
- * Creates a split-button specifically wired for the edit-comment page.
- * Clicking the main action button triggers generation into #content.
- */
+/** Creates the Suggest Reply button controls for the edit comment page. */
 function createEditPageSplitButtonControls( commentId: number ): HTMLElement {
-	let currentTone: Tone = DEFAULT_TONE;
-
-	const container = document.createElement( 'div' );
-	container.className = 'wpai-split-button';
-	container.setAttribute( TONE_ATTR, currentTone );
-
-	const actionBtn = document.createElement( 'button' );
-	actionBtn.id = EDIT_SUGGEST_BTN_ID;
-	actionBtn.type = 'button';
-	actionBtn.className = 'button wpai-split-button__action';
-	actionBtn.textContent = SUGGEST_BTN_TEXT;
-
-	actionBtn.addEventListener( 'click', () => {
-		void runGenerationEditPage( commentId );
+	return createSplitButton( {
+		buttonId: EDIT_SUGGEST_BTN_ID,
+		onAction: () => {
+			void runGenerationEditPage( commentId );
+		},
 	} );
-
-	const toggleBtn = document.createElement( 'button' );
-	toggleBtn.type = 'button';
-	toggleBtn.className = 'button wpai-split-button__toggle';
-	toggleBtn.setAttribute( 'aria-expanded', 'false' );
-	toggleBtn.setAttribute( 'aria-haspopup', 'true' );
-	toggleBtn.setAttribute( 'aria-label', __( 'Change reply tone', 'ai' ) );
-	toggleBtn.innerHTML =
-		'<span class="dashicons dashicons-arrow-down-alt2"></span>';
-
-	const dropdownMenu = document.createElement( 'div' );
-	dropdownMenu.className = 'wpai-split-button__dropdown';
-	dropdownMenu.hidden = true;
-
-	const updateSelectionUI = () => {
-		dropdownMenu
-			.querySelectorAll( '.wpai-dropdown-item' )
-			.forEach( ( item ) => {
-				if ( item.getAttribute( TONE_ATTR ) === currentTone ) {
-					item.classList.add( 'is-selected' );
-					item.setAttribute( 'aria-selected', 'true' );
-				} else {
-					item.classList.remove( 'is-selected' );
-					item.setAttribute( 'aria-selected', 'false' );
-				}
-			} );
-
-		container.setAttribute( TONE_ATTR, currentTone );
-	};
-
-	TONE_OPTIONS.forEach( ( { label, value } ) => {
-		const itemBtn = document.createElement( 'button' );
-		itemBtn.type = 'button';
-		itemBtn.className = 'wpai-dropdown-item';
-		itemBtn.setAttribute( TONE_ATTR, value );
-		itemBtn.innerHTML = `<span class="dashicons dashicons-yes wpai-selected-icon"></span> ${ label }`;
-
-		itemBtn.addEventListener( 'click', () => {
-			currentTone = value as Tone;
-			updateSelectionUI();
-			dropdownMenu.hidden = true;
-			toggleBtn.setAttribute( 'aria-expanded', 'false' );
-			toggleBtn.focus();
-		} );
-
-		dropdownMenu.appendChild( itemBtn );
-	} );
-
-	updateSelectionUI();
-
-	toggleBtn.addEventListener( 'click', () => {
-		const isExpanded = toggleBtn.getAttribute( 'aria-expanded' ) === 'true';
-		toggleBtn.setAttribute(
-			'aria-expanded',
-			isExpanded ? 'false' : 'true'
-		);
-
-		dropdownMenu.hidden = isExpanded;
-	} );
-
-	container.addEventListener( 'keydown', ( event ) => {
-		if ( event.key !== 'Escape' || dropdownMenu.hidden ) {
-			return;
-		}
-
-		dropdownMenu.hidden = true;
-		toggleBtn.setAttribute( 'aria-expanded', 'false' );
-		toggleBtn.focus();
-	} );
-
-	document.addEventListener( 'click', ( e ) => {
-		if ( ! container.contains( e.target as Node ) ) {
-			dropdownMenu.hidden = true;
-			toggleBtn.setAttribute( 'aria-expanded', 'false' );
-		}
-	} );
-
-	container.appendChild( actionBtn );
-	container.appendChild( toggleBtn );
-	container.appendChild( dropdownMenu );
-
-	return container;
 }
 
 /**
@@ -781,12 +630,14 @@ function injectEditPageControls( commentId: number ): void {
  * then populates the #content textarea.
  */
 async function runGenerationEditPage( commentId: number ): Promise< void > {
-	const tone = getEditSelectedTone();
+	const tone = getSelectedTone(
+		`#${ EDIT_CONTROLS_WRAPPER_ID } .wpai-split-button`
+	);
 
-	clearEditErrorNotice();
-	setEditTextareaPlaceholder( LOADING_PLACEHOLDER );
+	clearErrorNotice( EDIT_ERROR_NOTICE_ID );
+	setTextareaPlaceholder( '#content', LOADING_PLACEHOLDER );
 	setEditFormDisabled( true );
-	setEditSuggestBtnLoading( true );
+	setSplitButtonLoading( EDIT_SUGGEST_BTN_ID, true );
 
 	try {
 		const result = await runAbility< string >( 'ai/suggest-reply', {
@@ -794,22 +645,21 @@ async function runGenerationEditPage( commentId: number ): Promise< void > {
 			tone,
 		} );
 
-		setEditTextareaPlaceholder( '' );
+		setTextareaPlaceholder( '#content', '' );
 		populateEditTextarea( result ?? '' );
 	} catch ( err: any ) {
-		setEditTextareaPlaceholder( '' );
+		setTextareaPlaceholder( '#content', '' );
 
 		const message = err?.message ? err.message : GENERIC_ERROR_MESSAGE;
 
-		showEditErrorNotice( message );
+		showErrorNotice(
+			message,
+			document.getElementById( EDIT_CONTROLS_WRAPPER_ID ),
+			EDIT_ERROR_NOTICE_ID
+		);
 	} finally {
 		setEditFormDisabled( false );
-		setEditSuggestBtnLoading( false );
-
-		// Return focus to the textarea after re-enabling.
-		const textarea =
-			document.querySelector< HTMLTextAreaElement >( '#content' );
-		textarea?.focus();
+		setSplitButtonLoading( EDIT_SUGGEST_BTN_ID, false );
 	}
 }
 
