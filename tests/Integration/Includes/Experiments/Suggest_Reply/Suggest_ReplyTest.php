@@ -199,8 +199,8 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 
 		$data = wp_scripts()->get_data( 'ai_suggest_reply', 'data' );
 		$this->assertNotEmpty( $data );
-		$this->assertStringContainsString( '"is_edit_page":true', $data );
-		$this->assertStringContainsString( '"comment_id":42', $data );
+		$this->assertStringContainsString( '"is_edit_page":"1"', $data );
+		$this->assertStringContainsString( '"comment_id":"42"', $data );
 	}
 
 	/**
