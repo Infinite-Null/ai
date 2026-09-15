@@ -211,6 +211,76 @@ test.describe( 'Suggest Reply Experiment', () => {
 		await expect( page.locator( '#replyrow' ) ).not.toBeVisible();
 	} );
 
+	test( 'Can use the Suggest Reply Experiment on the Edit Comment screen', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		await enableExperiments( admin, page );
+		await enableExperiment( admin, page, 'Suggest Reply' );
+
+		// Create a new post and comment.
+		const post = await requestUtils.createPost( {
+			title: 'Test Suggest Reply Edit Comment Screen',
+			status: 'publish',
+		} );
+
+		const comment = await requestUtils.createComment( {
+			content: 'This is a test comment for the edit screen.',
+			post: post.id,
+		} );
+
+		await admin.visitAdminPage(
+			`comment.php?action=editcomment&c=${ comment.id }`
+		);
+
+		await expect( page.locator( '#post' ) ).toBeVisible();
+		await expect(
+			page.locator( '#wpai-suggest-reply-edit-controls' )
+		).toBeVisible();
+
+		const suggestReplyBtn = page.locator( '#wpai-suggest-reply-edit-btn' );
+		await expect( suggestReplyBtn ).toBeVisible();
+		await expect( suggestReplyBtn ).toHaveText( 'Suggest Reply' );
+
+		// Open the tone dropdown and verify options.
+		const toggleBtn = page.locator(
+			'#wpai-suggest-reply-edit-controls .wpai-split-button__toggle'
+		);
+		await expect( toggleBtn ).toBeVisible();
+		await toggleBtn.click();
+
+		const dropdown = page.locator(
+			'#wpai-suggest-reply-edit-controls .wpai-split-button__dropdown'
+		);
+		await expect( dropdown ).toBeVisible();
+		await expect(
+			dropdown.locator( '.wpai-dropdown-item[data-tone="friendly"]' )
+		).toBeVisible();
+		await expect(
+			dropdown.locator( '.wpai-dropdown-item[data-tone="professional"]' )
+		).toBeVisible();
+		await expect(
+			dropdown.locator( '.wpai-dropdown-item[data-tone="casual"]' )
+		).toBeVisible();
+
+		// Friendly should be selected by default.
+		await expect(
+			dropdown.locator( '.wpai-dropdown-item[data-tone="friendly"]' )
+		).toHaveClass( /is-selected/ );
+		await expect(
+			dropdown.locator( '.wpai-dropdown-item[data-tone="friendly"]' )
+		).toHaveAttribute( 'aria-selected', 'true' );
+
+		// Generate reply and verify comment content textarea is updated.
+		await suggestReplyBtn.click();
+
+		const contentTextarea = page.locator( 'textarea#content' );
+		await expect( contentTextarea ).toHaveValue(
+			'Edit or Delete Your First WordPress Post to Begin Your Blogging Adventure'
+		);
+	} );
+
 	test( 'Ensure the Suggest Reply Experiment UI is not visible when Experiments are globally disabled', async ( {
 		admin,
 		page,
