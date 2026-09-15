@@ -127,7 +127,7 @@ class Suggest_Reply extends Abstract_Feature {
 
 		if ( 'comment.php' === $hook_suffix ) {
 			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			$action     = isset( $_GET['action'] ) ? sanitize_key( $_GET['action'] ) : '';
+			$action = isset( $_GET['action'] ) ? sanitize_key( $_GET['action'] ) : '';
 			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			$comment_id = isset( $_GET['c'] ) ? absint( $_GET['c'] ) : 0;
 

@@ -8,8 +8,8 @@
 namespace WordPress\AI\Tests\Integration\Experiments\Suggest_Reply;
 
 use WP_UnitTestCase;
-use WordPress\AI\Experiments\Suggest_Reply\Suggest_Reply;
 use WordPress\AI\Experiments\Experiment_Category;
+use WordPress\AI\Experiments\Suggest_Reply\Suggest_Reply;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
 
@@ -63,6 +63,12 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 	 * @since 1.2.0
 	 */
 	public function tearDown(): void {
+		unset( $_GET['action'], $_GET['c'] );
+		wp_dequeue_script( 'ai_suggest_reply' );
+		wp_deregister_script( 'ai_suggest_reply' );
+		wp_dequeue_style( 'ai_suggest_reply' );
+		wp_deregister_style( 'ai_suggest_reply' );
+
 		wp_set_current_user( 0 );
 		delete_option( 'wpai_features_enabled' );
 		delete_option( 'wpai_feature_suggest-reply_enabled' );
@@ -140,7 +146,10 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 		$comment    = get_comment( $comment_id );
 		$experiment = new Suggest_Reply();
 
-		$existing_actions = array( 'edit' => 'Edit', 'reply' => 'Reply' );
+		$existing_actions = array(
+			'edit'  => 'Edit',
+			'reply' => 'Reply',
+		);
 		$actions          = $experiment->add_row_action( $existing_actions, $comment );
 
 		$this->assertArrayHasKey( 'edit', $actions );
@@ -170,6 +179,44 @@ class Suggest_ReplyTest extends WP_UnitTestCase {
 		$experiment = new Suggest_Reply();
 		$experiment->enqueue_assets( 'options-general.php' );
 
-		$this->assertFalse( wp_script_is( 'suggest_reply', 'enqueued' ) );
+		$this->assertFalse( wp_script_is( 'ai_suggest_reply', 'enqueued' ) );
+	}
+
+	/**
+	 * Test enqueue_assets() enqueues assets and localizes edit page data on the comment edit screen.
+	 *
+	 * @since 1.2.0
+	 */
+	public function test_enqueue_assets_enqueues_on_comment_edit_screen() {
+		$_GET['action'] = 'editcomment';
+		$_GET['c']      = 42;
+
+		$experiment = new Suggest_Reply();
+		$experiment->enqueue_assets( 'comment.php' );
+
+		$this->assertTrue( wp_script_is( 'ai_suggest_reply', 'enqueued' ) );
+		$this->assertTrue( wp_style_is( 'ai_suggest_reply', 'enqueued' ) );
+
+		$data = wp_scripts()->get_data( 'ai_suggest_reply', 'data' );
+		$this->assertNotEmpty( $data );
+		$this->assertStringContainsString( '"is_edit_page":true', $data );
+		$this->assertStringContainsString( '"comment_id":42', $data );
+	}
+
+	/**
+	 * Test enqueue_assets() does not localize edit page data on comment screen when not editing.
+	 *
+	 * @since 1.2.0
+	 */
+	public function test_enqueue_assets_on_comment_screen_without_edit_action() {
+		$experiment = new Suggest_Reply();
+		$experiment->enqueue_assets( 'comment.php' );
+
+		$this->assertTrue( wp_script_is( 'ai_suggest_reply', 'enqueued' ) );
+
+		$data = wp_scripts()->get_data( 'ai_suggest_reply', 'data' );
+		$this->assertNotEmpty( $data );
+		$this->assertStringNotContainsString( 'is_edit_page', $data );
+		$this->assertStringNotContainsString( 'comment_id', $data );
 	}
 }
