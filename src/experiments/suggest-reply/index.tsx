@@ -26,12 +26,7 @@ declare global {
 domReady( () => {
 	const data = window.aiSuggestReplyData;
 
-	const isEnabled =
-		data?.enabled === true ||
-		data?.enabled === '1' ||
-		data?.enabled === 'true';
-
-	if ( ! isEnabled ) {
+	if ( ! data?.enabled ) {
 		return;
 	}
 
