@@ -29,6 +29,7 @@ import { useInstanceId } from '@wordpress/compose';
  */
 import { REVIEWABLE_BLOCK_TYPES } from '../../../utils/notes';
 import {
+	isPostBlock,
 	useEditorialBlock,
 	useEditorialNotes,
 } from '../hooks/useEditorialNotes';
@@ -172,6 +173,10 @@ export default function EditorialNotesPlugin() {
 					}
 
 					const clientId = selectedClientIds[ 0 ] ?? null;
+					if ( ! clientId || ! isPostBlock( clientId ) ) {
+						return null;
+					}
+
 					const isThisBlockReviewing = reviewingClientId === clientId;
 
 					return (
