@@ -465,9 +465,6 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 			await expect( reviewButton ).toBeVisible();
 			await reviewButton.click();
 
-			// Wait a few seconds for the review to start.
-			await page.waitForTimeout( 2000 );
-
 			// Verify it counts the 2 post blocks (0 of 2), not the surrounding template wrapper blocks.
 			await expect(
 				page.getByRole( 'button', {
