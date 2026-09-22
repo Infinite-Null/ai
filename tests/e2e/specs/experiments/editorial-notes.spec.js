@@ -421,7 +421,6 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 				title: 'Show Template Block Count Test',
 			} );
 
-			// Insert 2 reviewable paragraph blocks with content meeting minimum length.
 			await editor.insertBlock( {
 				name: 'core/paragraph',
 				attributes: {
@@ -438,10 +437,8 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 				},
 			} );
 
-			// Enable "Show template" mode.
 			await setShowTemplate( page, true );
 
-			// Set up a deferred promise to intercept and hold the Ability request so we can assert the reviewing count.
 			let resolveRequest;
 			const requestPromise = new Promise( ( resolve ) => {
 				resolveRequest = resolve;
@@ -458,14 +455,13 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 			await editor.openDocumentSettingsSidebar();
 			await page.getByRole( 'tab', { name: 'Post' } ).click();
 
-			// Trigger review.
 			const reviewButton = page.getByRole( 'button', {
 				name: 'Generate Editorial Notes',
 			} );
+
 			await expect( reviewButton ).toBeVisible();
 			await reviewButton.click();
 
-			// Verify it counts the 2 post blocks (0 of 2), not the surrounding template wrapper blocks.
 			await expect(
 				page.getByRole( 'button', {
 					name: /Reviewing blocks… \(0 of 2\)/,
@@ -473,9 +469,6 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 			).toBeVisible();
 
 			resolveRequest();
-
-			// Disable "Show template" mode after the test finishes.
-			await setShowTemplate( page, false );
 		} );
 	} );
 } );
