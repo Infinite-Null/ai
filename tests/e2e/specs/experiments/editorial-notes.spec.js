@@ -11,6 +11,7 @@ import {
 	disableExperiments,
 	enableExperiments,
 	enableExperiment,
+	setShowTemplate,
 } from '../../utils/helpers';
 
 const EXPERIMENT_LABEL = 'Editorial Notes';
@@ -396,5 +397,88 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 
 		// Finish the pending request
 		resolveRequest();
+	} );
+
+	test.describe( 'Show template mode', () => {
+		test.beforeAll( async ( { requestUtils } ) => {
+			await requestUtils.activateTheme( 'twentytwentyfour' );
+		} );
+
+		test.afterAll( async ( { requestUtils } ) => {
+			await requestUtils.activateTheme( 'twentytwentyone' );
+		} );
+
+		test.afterEach( async ( { page } ) => {
+			await setShowTemplate( page, false );
+		} );
+
+		test( 'Reviews post blocks instead of template blocks when "Show template" is enabled', async ( {
+			admin,
+			editor,
+			page,
+		} ) => {
+			await admin.createNewPost( {
+				title: 'Show Template Block Count Test',
+			} );
+
+			// Insert 2 reviewable paragraph blocks with content meeting minimum length.
+			await editor.insertBlock( {
+				name: 'core/paragraph',
+				attributes: {
+					content:
+						'This is paragraph one with sufficient length for the editorial notes feature to analyze the post block by block.',
+				},
+			} );
+
+			await editor.insertBlock( {
+				name: 'core/paragraph',
+				attributes: {
+					content:
+						'This is paragraph two which also contains enough content for the editorial notes review to execute properly.',
+				},
+			} );
+
+			// Enable "Show template" mode.
+			await setShowTemplate( page, true );
+
+			// Set up a deferred promise to intercept and hold the Ability request so we can assert the reviewing count.
+			let resolveRequest;
+			const requestPromise = new Promise( ( resolve ) => {
+				resolveRequest = resolve;
+			} );
+
+			await page.route(
+				/wp-json\/wp-abilities\/v1\/abilities\/ai\/editorial-notes\/run/,
+				async ( route ) => {
+					await requestPromise;
+					await route.continue();
+				}
+			);
+
+			await editor.openDocumentSettingsSidebar();
+			await page.getByRole( 'tab', { name: 'Post' } ).click();
+
+			// Trigger review.
+			const reviewButton = page.getByRole( 'button', {
+				name: 'Generate Editorial Notes',
+			} );
+			await expect( reviewButton ).toBeVisible();
+			await reviewButton.click();
+
+			// Wait a few seconds for the review to start.
+			await page.waitForTimeout( 2000 );
+
+			// Verify it counts the 2 post blocks (0 of 2), not the surrounding template wrapper blocks.
+			await expect(
+				page.getByRole( 'button', {
+					name: /Reviewing blocks… \(0 of 2\)/,
+				} )
+			).toBeVisible();
+
+			resolveRequest();
+
+			// Disable "Show template" mode after the test finishes.
+			await setShowTemplate( page, false );
+		} );
 	} );
 } );

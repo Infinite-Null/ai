@@ -590,3 +590,48 @@ export const disableAdvancedSettings = async ( page: Page ) => {
 	// Close the menu.
 	await page.keyboard.press( 'Escape' );
 };
+
+/**
+ * Helper to enable or disable "Show template" mode.
+ *
+ * @param page   Playwright page.
+ * @param enable Whether to enable or disable template mode.
+ */
+export const setShowTemplate = async ( page: Page, enable: boolean ) => {
+	const viewToggle = page
+		.getByRole( 'region', { name: 'Editor top bar' } )
+		.locator( '.editor-preview-dropdown__toggle' );
+
+	if (
+		( await viewToggle.count() ) > 0 &&
+		( await viewToggle.isVisible() )
+	) {
+		await viewToggle.click();
+		const templateOption = page.getByRole( 'menuitemcheckbox', {
+			name: 'Show template',
+		} );
+		if ( ( await templateOption.count() ) > 0 ) {
+			const isChecked = await templateOption.isChecked();
+			if ( ( enable && ! isChecked ) || ( ! enable && isChecked ) ) {
+				await templateOption.click();
+				return;
+			}
+			await page.keyboard.press( 'Escape' );
+			return;
+		}
+		await page.keyboard.press( 'Escape' );
+	}
+
+	// Fallback to dispatching the action directly.
+	await page.evaluate( ( shouldEnable: boolean ) => {
+		const { setRenderingMode, setDefaultRenderingMode } =
+			( window as any ).wp?.data?.dispatch( 'core/editor' ) || {};
+		const mode = shouldEnable ? 'template-locked' : 'post-only';
+		if ( setRenderingMode ) {
+			setRenderingMode( mode );
+		}
+		if ( setDefaultRenderingMode ) {
+			setDefaultRenderingMode( mode );
+		}
+	}, enable );
+};
