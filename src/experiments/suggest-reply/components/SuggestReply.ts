@@ -297,9 +297,8 @@ function createSplitButtonControls(): HTMLElement {
 }
 
 /**
- * Returns true when the WP inline form is currently open in Quick Edit mode
- * (i.e. editing an existing comment). WordPress signals this by adding the
- * `inline-edit-comment` class to #replyrow.
+ * Returns true when the inline form is in Quick Edit mode.
+ * WordPress hides `#edithead` in Reply mode and shows it in Quick Edit mode.
  */
 function isQuickEditMode(): boolean {
 	const editHead = document.getElementById( 'edithead' );
@@ -495,10 +494,8 @@ export function init(): void {
 	commentList.setAttribute( INIT_FLAG_ATTR, 'true' );
 
 	/**
-	 * Watch for class changes on #replyrow so we can hide the Suggest Reply
-	 * controls when WordPress switches the inline form into Quick Edit mode
-	 * (class `inline-edit-comment`) and show them again in Reply mode
-	 * (class `inline-reply-comment`).
+	 * Watch `#edithead` for style changes to detect Quick Edit vs Reply mode
+	 * and sync the controls visibility accordingly.
 	 */
 	const editHead = document.getElementById( 'edithead' );
 

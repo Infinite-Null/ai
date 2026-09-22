@@ -112,7 +112,7 @@ test.describe( 'Suggest Reply Experiment', () => {
 		).toHaveAttribute( 'aria-selected', 'true' );
 	} );
 
-	test( 'Suggest Reply controls are hidden in Quick Edit mode and visible in Reply mode', async ( {
+	test( 'Suggest Reply controls are hidden in Quick Edit mode', async ( {
 		admin,
 		page,
 		requestUtils,
