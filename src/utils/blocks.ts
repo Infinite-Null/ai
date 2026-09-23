@@ -6,6 +6,7 @@
  * WordPress dependencies
  */
 import { store as blockEditorStore } from '@wordpress/block-editor';
+import { store as editorStore } from '@wordpress/editor';
 import { select } from '@wordpress/data';
 import { serialize } from '@wordpress/blocks';
 
@@ -237,4 +238,87 @@ export function getEditableTextAttribute(
 	}
 
 	return undefined;
+}
+
+/**
+ * Context returned for the post content blocks.
+ */
+export interface PostContentBlockContext< T = BlockWithContent > {
+	rootClientId: string | null;
+	allBlocks: T[];
+	isMissingPostContent: boolean;
+}
+
+/**
+ * Resolves the block context for the current post/page being edited.
+ *
+ * In standard mode ('post-only'), the root blocks on the canvas are the post blocks directly.
+ * When "Show template" is enabled (renderingMode === 'template-locked'), the root canvas blocks
+ * are template parts (Header, Footer, etc.) and the post's actual content resides inside the
+ * `core/post-content` block (excluding any `core/post-content` blocks nested inside a Query Loop).
+ *
+ * If in template-locked mode but no valid `core/post-content` block is found, `isMissingPostContent`
+ * is set to true and `allBlocks` is empty to prevent operating on template wrapper blocks.
+ *
+ * @template T Block type extending BlockWithContent.
+ * @param {Function} [selectFn] The WordPress data select function (defaults to @wordpress/data select).
+ * @return {PostContentBlockContext<T>} The post content block context.
+ */
+export function getPostContentBlockContext< T = BlockWithContent >(
+	selectFn: ( store: any ) => any = select
+): PostContentBlockContext< T > {
+	const editor = selectFn( editorStore );
+	const isShowingTemplate =
+		editor?.getRenderingMode?.() === 'template-locked';
+
+	const blockEditor = selectFn( blockEditorStore );
+
+	// When not in template-locked mode, root blocks are already the post blocks.
+	if ( ! isShowingTemplate ) {
+		return {
+			rootClientId: null,
+			allBlocks: ( blockEditor?.getBlocks?.() ?? [] ) as T[],
+			isMissingPostContent: false,
+		};
+	}
+
+	const postContentClientIds: string[] | undefined =
+		blockEditor?.getBlocksByName?.( 'core/post-content' );
+
+	const rootClientId =
+		postContentClientIds?.find( ( clientId: string ) => {
+			if (
+				typeof blockEditor?.getBlockParentsByBlockName === 'function'
+			) {
+				const queryParents = blockEditor.getBlockParentsByBlockName(
+					clientId,
+					[ 'core/query', 'core/post-template' ]
+				);
+				return queryParents.length === 0;
+			}
+
+			const parents: string[] =
+				blockEditor?.getBlockParents?.( clientId ) ?? [];
+			return ! parents.some( ( parentId: string ) => {
+				const name = blockEditor?.getBlockName?.( parentId );
+				return name === 'core/query' || name === 'core/post-template';
+			} );
+		} ) ?? null;
+
+	if ( rootClientId ) {
+		return {
+			rootClientId,
+			allBlocks: ( blockEditor?.getBlocks?.( rootClientId ) ??
+				[] ) as T[],
+			isMissingPostContent: false,
+		};
+	}
+
+	// In template-locked mode without a post-content block, return empty blocks
+	// to avoid operating on root template wrapper blocks.
+	return {
+		rootClientId: null,
+		allBlocks: [],
+		isMissingPostContent: true,
+	};
 }

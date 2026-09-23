@@ -20,6 +20,7 @@ import { store as noticesStore } from '@wordpress/notices';
 import {
 	flattenBlocks,
 	getBlockText,
+	getPostContentBlockContext,
 	replaceBlockWithPlaceholder,
 } from '../../../utils/blocks';
 import type { ExistingNote } from '../../../utils/notes';
@@ -70,75 +71,6 @@ interface ReviewResult {
 interface NoteRecord {
 	id: number;
 	[ key: string ]: unknown;
-}
-
-/**
- * Returns the client ID of the `core/post-content` block if present in the editor canvas.
- * When "Show template" is enabled, post blocks reside inside this block.
- *
- * @param selectFn The select function (defaults to @wordpress/data select).
- * @return The post content block client ID, or null if not found.
- */
-export function getPostContentClientId(
-	selectFn: ( store: any ) => any = select
-): string | null {
-	const blockEditor = selectFn( blockEditorStore );
-	const postContentClientIds: string[] | undefined =
-		blockEditor.getBlocksByName?.( 'core/post-content' );
-	if ( postContentClientIds && postContentClientIds.length > 0 ) {
-		return postContentClientIds[ 0 ] ?? null;
-	}
-	return null;
-}
-
-/**
- * Retrieves the blocks belonging to the current post/page being edited.
- *
- * When "Show template" is enabled in WordPress, the root blocks in the editor canvas
- * are template blocks (Header, Footer, Title, etc.) and the actual post/page blocks
- * reside inside the `core/post-content` block. When "Show template" is disabled,
- * the root blocks are the post blocks directly.
- *
- * @template T Block type.
- * @param    selectFn The select function (defaults to @wordpress/data select).
- * @return Array of post blocks.
- */
-export function getPostBlocks< T = Block >(
-	selectFn: ( store: any ) => any = select
-): T[] {
-	const blockEditor = selectFn( blockEditorStore );
-	const postContentClientId = getPostContentClientId( selectFn );
-
-	if ( postContentClientId ) {
-		return ( blockEditor.getBlocks( postContentClientId ) ?? [] ) as T[];
-	}
-
-	return ( blockEditor.getBlocks() ?? [] ) as T[];
-}
-
-/**
- * Checks whether a block belongs to the post/page being edited (as opposed to template wrapper blocks).
- *
- * @param clientId The client ID of the block to check.
- * @param selectFn The select function (defaults to @wordpress/data select).
- * @return True if the block belongs to the post content, false otherwise.
- */
-export function isPostBlock(
-	clientId: string,
-	selectFn: ( store: any ) => any = select
-): boolean {
-	const postContentClientId = getPostContentClientId( selectFn );
-	if ( ! postContentClientId ) {
-		return true;
-	}
-
-	if ( clientId === postContentClientId ) {
-		return false;
-	}
-
-	const blockEditor = selectFn( blockEditorStore );
-	const parents: string[] = blockEditor.getBlockParents?.( clientId ) ?? [];
-	return parents.includes( postContentClientId );
 }
 
 /**
@@ -292,7 +224,14 @@ export function useEditorialNotes(): {
 			const postId = select( editorStore ).getCurrentPostId() as number;
 
 			// Get all blocks belonging to the post and flatten the tree.
-			const allBlocks = getPostBlocks();
+			const { allBlocks, isMissingPostContent } =
+				getPostContentBlockContext< Block >();
+
+			if ( isMissingPostContent || allBlocks.length === 0 ) {
+				setLastRunCount( 0 );
+				return;
+			}
+
 			const flatBlocks = flattenBlocks( allBlocks );
 
 			// Filter to reviewable block types.

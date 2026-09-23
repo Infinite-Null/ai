@@ -11,7 +11,6 @@ import {
 	disableExperiments,
 	enableExperiments,
 	enableExperiment,
-	setShowTemplate,
 } from '../../utils/helpers';
 
 const EXPERIMENT_LABEL = 'Editorial Notes';
@@ -408,8 +407,8 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 			await requestUtils.activateTheme( 'twentytwentyone' );
 		} );
 
-		test.afterEach( async ( { page } ) => {
-			await setShowTemplate( page, false );
+		test.beforeEach( async ( { requestUtils } ) => {
+			await requestUtils.resetPreferences();
 		} );
 
 		test( 'Reviews post blocks instead of template blocks when "Show template" is enabled', async ( {
@@ -437,7 +436,13 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 				},
 			} );
 
-			await setShowTemplate( page, true );
+			// Enable the template mode.
+			await page
+				.getByRole( 'button', { name: 'View', exact: true } )
+				.click();
+			await page
+				.getByRole( 'menuitemcheckbox', { name: 'Show template' } )
+				.click();
 
 			let resolveRequest;
 			const requestPromise = new Promise( ( resolve ) => {
