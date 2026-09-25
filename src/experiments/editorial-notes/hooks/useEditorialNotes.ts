@@ -225,9 +225,23 @@ export function useEditorialNotes(): {
 
 			// Get all blocks belonging to the post and flatten the tree.
 			const { allBlocks, isMissingPostContent } =
-				getPostContentBlockContext< Block >();
+				getPostContentBlockContext();
 
-			if ( isMissingPostContent || allBlocks.length === 0 ) {
+			if ( isMissingPostContent ) {
+				dispatch( noticesStore ).createErrorNotice(
+					__(
+						'Unable to generate notes: the current template does not contain a post content block.',
+						'ai'
+					),
+					{
+						id: NOTICE_ID,
+						isDismissible: true,
+					}
+				);
+				return;
+			}
+
+			if ( allBlocks.length === 0 ) {
 				setLastRunCount( 0 );
 				return;
 			}

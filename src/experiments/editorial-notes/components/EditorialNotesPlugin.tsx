@@ -191,9 +191,7 @@ export default function EditorialNotesPlugin() {
 								isAnyBlockReviewing || isBlockReviewDisabled
 							}
 							onClick={ () => {
-								if ( clientId ) {
-									reviewBlock( clientId );
-								}
+								reviewBlock( clientId );
 							} }
 							{ ...( isAnyBlockReviewing &&
 								! isThisBlockReviewing && {

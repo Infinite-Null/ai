@@ -403,11 +403,12 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 			await requestUtils.activateTheme( 'twentytwentyfour' );
 		} );
 
-		test.afterAll( async ( { requestUtils } ) => {
-			await requestUtils.activateTheme( 'twentytwentyone' );
+		test.beforeEach( async ( { requestUtils } ) => {
+			await requestUtils.resetPreferences();
 		} );
 
-		test.beforeEach( async ( { requestUtils } ) => {
+		test.afterAll( async ( { requestUtils } ) => {
+			await requestUtils.activateTheme( 'twentytwentyone' );
 			await requestUtils.resetPreferences();
 		} );
 

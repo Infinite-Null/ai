@@ -7,8 +7,8 @@
  */
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import { store as editorStore } from '@wordpress/editor';
-import { select } from '@wordpress/data';
-import { serialize } from '@wordpress/blocks';
+import { select, type SelectFunction } from '@wordpress/data';
+import { serialize, type Block } from '@wordpress/blocks';
 
 /**
  * Minimal block shape for text extraction and flattening.
@@ -33,6 +33,15 @@ interface BlockWithClientId extends BlockWithContent {
 type HTMLSerializable = {
 	toHTMLString: () => string;
 };
+
+/**
+ * Context returned for the post content blocks.
+ */
+export interface PostContentBlockContext {
+	rootClientId: string | null;
+	allBlocks: Block[];
+	isMissingPostContent: boolean;
+}
 
 /**
  * Normalizes block attribute values into plain text.
@@ -241,15 +250,6 @@ export function getEditableTextAttribute(
 }
 
 /**
- * Context returned for the post content blocks.
- */
-export interface PostContentBlockContext< T = BlockWithContent > {
-	rootClientId: string | null;
-	allBlocks: T[];
-	isMissingPostContent: boolean;
-}
-
-/**
  * Resolves the block context for the current post/page being edited.
  *
  * In standard mode ('post-only'), the root blocks on the canvas are the post blocks directly.
@@ -260,16 +260,14 @@ export interface PostContentBlockContext< T = BlockWithContent > {
  * If in template-locked mode but no valid `core/post-content` block is found, `isMissingPostContent`
  * is set to true and `allBlocks` is empty to prevent operating on template wrapper blocks.
  *
- * @template T Block type extending BlockWithContent.
- * @param {Function} [selectFn] The WordPress data select function (defaults to @wordpress/data select).
- * @return {PostContentBlockContext<T>} The post content block context.
+ * @param {SelectFunction} [selectFn] The WordPress data select function (defaults to @wordpress/data select).
+ * @return {PostContentBlockContext} The post content block context.
  */
-export function getPostContentBlockContext< T = BlockWithContent >(
-	selectFn: ( store: any ) => any = select
-): PostContentBlockContext< T > {
+export function getPostContentBlockContext(
+	selectFn: SelectFunction = select
+): PostContentBlockContext {
 	const editor = selectFn( editorStore );
-	const isShowingTemplate =
-		editor?.getRenderingMode?.() === 'template-locked';
+	const isShowingTemplate = editor.getRenderingMode() === 'template-locked';
 
 	const blockEditor = selectFn( blockEditorStore );
 
@@ -277,39 +275,27 @@ export function getPostContentBlockContext< T = BlockWithContent >(
 	if ( ! isShowingTemplate ) {
 		return {
 			rootClientId: null,
-			allBlocks: ( blockEditor?.getBlocks?.() ?? [] ) as T[],
+			allBlocks: blockEditor.getBlocks() ?? [],
 			isMissingPostContent: false,
 		};
 	}
 
-	const postContentClientIds: string[] | undefined =
-		blockEditor?.getBlocksByName?.( 'core/post-content' );
+	const postContentClientIds: string[] =
+		blockEditor.getBlocksByName( 'core/post-content' ) ?? [];
 
 	const rootClientId =
-		postContentClientIds?.find( ( clientId: string ) => {
-			if (
-				typeof blockEditor?.getBlockParentsByBlockName === 'function'
-			) {
-				const queryParents = blockEditor.getBlockParentsByBlockName(
-					clientId,
-					[ 'core/query', 'core/post-template' ]
-				);
-				return queryParents.length === 0;
-			}
-
-			const parents: string[] =
-				blockEditor?.getBlockParents?.( clientId ) ?? [];
-			return ! parents.some( ( parentId: string ) => {
-				const name = blockEditor?.getBlockName?.( parentId );
-				return name === 'core/query' || name === 'core/post-template';
-			} );
+		postContentClientIds.find( ( clientId: string ) => {
+			const queryParents = blockEditor.getBlockParentsByBlockName(
+				clientId,
+				'core/query'
+			);
+			return queryParents.length === 0;
 		} ) ?? null;
 
 	if ( rootClientId ) {
 		return {
 			rootClientId,
-			allBlocks: ( blockEditor?.getBlocks?.( rootClientId ) ??
-				[] ) as T[],
+			allBlocks: blockEditor.getBlocks( rootClientId ) ?? [],
 			isMissingPostContent: false,
 		};
 	}
