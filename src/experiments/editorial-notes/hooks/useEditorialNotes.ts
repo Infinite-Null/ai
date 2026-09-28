@@ -228,17 +228,12 @@ export function useEditorialNotes(): {
 				getPostContentBlockContext();
 
 			if ( isMissingPostContent ) {
-				dispatch( noticesStore ).createErrorNotice(
+				throw new Error(
 					__(
 						'Unable to generate notes: the current template does not contain a post content block.',
 						'ai'
-					),
-					{
-						id: NOTICE_ID,
-						isDismissible: true,
-					}
+					)
 				);
-				return;
 			}
 
 			if ( allBlocks.length === 0 ) {
