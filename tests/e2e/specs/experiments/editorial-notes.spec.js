@@ -476,5 +476,70 @@ test.describe( 'AI Editorial Notes Experiment', () => {
 
 			resolveRequest();
 		} );
+
+		test( 'Displays error notice when post content block is missing from the template', async ( {
+			admin,
+			editor,
+			page,
+		} ) => {
+			await admin.createNewPost( {
+				title: 'Missing Post Content Template Test',
+			} );
+
+			await editor.insertBlock( {
+				name: 'core/paragraph',
+				attributes: {
+					content:
+						'This is paragraph one with sufficient length for the editorial notes feature to analyze the post block by block.',
+				},
+			} );
+
+			// Enable the template mode.
+			await page
+				.getByRole( 'button', { name: 'View', exact: true } )
+				.click();
+			await page
+				.getByRole( 'menuitemcheckbox', { name: 'Show template' } )
+				.click();
+
+			// Unlock and remove the post-content block from the template.
+			await page.evaluate( () => {
+				const blockEditor =
+					window.wp.data.select( 'core/block-editor' );
+				const id =
+					blockEditor.getBlocksByName( 'core/post-content' )[ 0 ];
+				if ( id ) {
+					window.wp.data
+						.dispatch( 'core/block-editor' )
+						.updateBlockAttributes( id, {
+							lock: { remove: false, move: false },
+						} );
+					window.wp.data
+						.dispatch( 'core/block-editor' )
+						.removeBlock( id );
+				}
+			} );
+
+			await editor.openDocumentSettingsSidebar();
+			await page.getByRole( 'tab', { name: 'Post' } ).click();
+
+			const reviewButton = page.getByRole( 'button', {
+				name: 'Generate Editorial Notes',
+			} );
+
+			await expect( reviewButton ).toBeVisible();
+			await reviewButton.click();
+
+			const errorNotice = page.locator( '.components-notice.is-error', {
+				hasText:
+					'Unable to generate notes: the current template does not contain a post content block.',
+			} );
+			await expect( errorNotice ).toBeVisible();
+			await expect(
+				errorNotice.getByRole( 'button', {
+					name: 'Close',
+				} )
+			).toBeVisible();
+		} );
 	} );
 } );
