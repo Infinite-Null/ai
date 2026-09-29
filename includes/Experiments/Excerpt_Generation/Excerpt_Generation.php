@@ -49,11 +49,7 @@ class Excerpt_Generation extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 */
-	public function register(): void {
-		if ( ! \WordPress\AI\current_user_can_access_feature( $this->get_id() ) ) {
-			return;
-		}
-
+	protected function register_feature(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 	}
