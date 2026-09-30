@@ -122,16 +122,6 @@ export function AccessControlSettings( {
 					}
 				}
 
-				if ( id === undefined ) {
-					const numericId = Number( label );
-					if (
-						Number.isInteger( numericId ) &&
-						effectiveUsers.includes( numericId )
-					) {
-						id = numericId;
-					}
-				}
-
 				if ( id !== undefined ) {
 					newUsers.push( id );
 					newMap.set( id, label );
