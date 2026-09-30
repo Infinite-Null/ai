@@ -203,7 +203,7 @@ class Settings_Registration {
 				"wpai_feature_{$feature_id}_roles",
 				array(
 					'type'              => 'array',
-					'default'           => array(),
+					'default'           => \WordPress\AI\get_default_feature_roles(),
 					'sanitize_callback' => static function ( $roles ) {
 						if ( ! is_array( $roles ) ) {
 							return array();
@@ -222,8 +222,9 @@ class Settings_Registration {
 					},
 					'show_in_rest'      => array(
 						'schema' => array(
-							'type'  => 'array',
-							'items' => array(
+							'type'    => 'array',
+							'default' => \WordPress\AI\get_default_feature_roles(),
+							'items'   => array(
 								'type' => 'string',
 							),
 						),

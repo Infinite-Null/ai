@@ -467,7 +467,11 @@ export const clearFeatureAccessSettings = async (
 		path: '/wp/v2/settings',
 		method: 'POST',
 		data: {
-			[ `wpai_feature_${ featureId }_roles` ]: [],
+			[ `wpai_feature_${ featureId }_roles` ]: [
+				'administrator',
+				'editor',
+				'author',
+			],
 			[ `wpai_feature_${ featureId }_users` ]: [],
 		},
 	} );

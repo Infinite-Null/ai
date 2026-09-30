@@ -122,6 +122,16 @@ export function AccessControlSettings( {
 					}
 				}
 
+				if ( id === undefined ) {
+					const numericId = Number( label );
+					if (
+						Number.isInteger( numericId ) &&
+						effectiveUsers.includes( numericId )
+					) {
+						id = numericId;
+					}
+				}
+
 				if ( id !== undefined ) {
 					newUsers.push( id );
 					newMap.set( id, label );
@@ -133,7 +143,14 @@ export function AccessControlSettings( {
 			stage( { roles: effectiveRoles, users: newUsers } );
 			search( '' );
 		},
-		[ stage, effectiveRoles, suggestionNameToId, selectedUserMap, search ]
+		[
+			stage,
+			effectiveRoles,
+			effectiveUsers,
+			suggestionNameToId,
+			selectedUserMap,
+			search,
+		]
 	);
 
 	const handleInputChange = useCallback(

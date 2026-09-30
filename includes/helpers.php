@@ -960,11 +960,38 @@ function generate_embeddings( $input, array $args = array() ) {
 }
 
 /**
+ * Returns the default allowed roles for features when access control has not been customized.
+ *
+ * Excludes 'subscriber' and 'contributor' by default.
+ *
+ * @since x.x.x
+ *
+ * @return string[] Array of default role slugs.
+ */
+function get_default_feature_roles(): array {
+	if ( ! function_exists( 'wp_roles' ) ) {
+		return array( 'administrator', 'editor', 'author' );
+	}
+
+	$roles = array();
+	foreach ( array_keys( wp_roles()->roles ) as $role_id ) {
+		if ( in_array( $role_id, array( 'subscriber', 'contributor' ), true ) ) {
+			continue;
+		}
+
+		$roles[] = $role_id;
+	}
+
+	return $roles;
+}
+
+/**
  * Checks whether the current user has access to a given feature based on access control settings.
  *
  * Users with subscriber or contributor roles are denied access directly.
- * If no roles or users are explicitly configured for the feature, it allows access by default.
- * If there are configured roles/users, the current user must match at least one role or be explicitly listed.
+ * If no roles or users are explicitly configured for the feature, it defaults to allowing all non-subscriber/contributor roles.
+ * If access control is configured, the current user must match at least one allowed role or be explicitly listed as an allowed user.
+ * If all roles and users are unchecked/empty, access is denied.
  *
  * @since x.x.x
  *
@@ -978,14 +1005,16 @@ function current_user_can_access_feature( string $feature_id ): bool {
 		return false;
 	}
 
-	$roles = get_option( "wpai_feature_{$feature_id}_roles", array() );
-	$users = get_option( "wpai_feature_{$feature_id}_users", array() );
+	$roles = get_option( "wpai_feature_{$feature_id}_roles", null );
+	$users = get_option( "wpai_feature_{$feature_id}_users", null );
 
-	$roles = is_array( $roles ) ? $roles : array();
-	$users = is_array( $users ) ? $users : array();
-
-	if ( empty( $roles ) && empty( $users ) ) {
-		return true;
+	// If access control has not been configured in the database, default to all eligible roles.
+	if ( null === $roles && null === $users ) {
+		$roles = get_default_feature_roles();
+		$users = array();
+	} else {
+		$roles = is_array( $roles ) ? $roles : array();
+		$users = is_array( $users ) ? $users : array();
 	}
 
 	if ( in_array( $current_user->ID, array_map( 'intval', $users ), true ) ) {
@@ -996,6 +1025,8 @@ function current_user_can_access_feature( string $feature_id ): bool {
 
 	/**
 	 * Filters whether the current user has access to a feature based on role.
+	 *
+	 * @since x.x.x
 	 *
 	 * @param bool     $has_access   Whether the user has access.
 	 * @param string   $feature_id   The feature identifier.
