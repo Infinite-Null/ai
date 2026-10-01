@@ -76,8 +76,8 @@
 		"@wordpress/compose": "7.44.0",
 		"@wordpress/core-abilities": "0.10.0",
 		"@wordpress/core-data": "7.44.0",
-		"@wordpress/data": "10.44.0",
-		"@wordpress/dataviews": "14.1.0",
+		"@wordpress/data": "10.55.0",
+		"@wordpress/dataviews": "19.0.0",
 		"@wordpress/date": "5.44.0",
 		"@wordpress/dom": "4.47.0",
 		"@wordpress/dom-ready": "4.44.0",
@@ -115,7 +115,7 @@
 		"webpack-dev-server@<=5.2.0": "^5.2.1"
 	},
 	"engines": {
-		"node": ">=22.21.1",
-		"npm": ">=10.9.4"
+		"node": ">=24.18.0",
+		"npm": ">=11.16.0"
 	}
 }
