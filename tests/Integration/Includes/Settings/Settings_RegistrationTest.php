@@ -51,11 +51,10 @@ class Settings_RegistrationTest extends WP_UnitTestCase {
 	 * {@inheritDoc}
 	 */
 	public function tearDown(): void {
-		unregister_setting( Settings_Registration::OPTION_GROUP, Settings_Registration::GLOBAL_OPTION );
 		unregister_setting( Settings_Registration::OPTION_GROUP, 'wpai_feature_settings-registration-test_enabled' );
 		unregister_setting( Settings_Registration::OPTION_GROUP, 'wpai_feature_settings-registration-test_field_developer' );
-		unregister_setting( Settings_Registration::OPTION_GROUP, 'wpai_feature_settings-registration-test_roles' );
-		unregister_setting( Settings_Registration::OPTION_GROUP, 'wpai_feature_settings-registration-test_users' );
+		unregister_setting( Settings_Registration::ACCESS_CONTROL_OPTION_GROUP, 'wpai_feature_settings-registration-test_roles' );
+		unregister_setting( Settings_Registration::ACCESS_CONTROL_OPTION_GROUP, 'wpai_feature_settings-registration-test_users' );
 		delete_option( 'wpai_feature_settings-registration-test_field_developer' );
 		delete_option( 'wpai_feature_settings-registration-test_roles' );
 		delete_option( 'wpai_feature_settings-registration-test_users' );
@@ -106,11 +105,27 @@ class Settings_RegistrationTest extends WP_UnitTestCase {
 
 		$this->assertArrayHasKey( $roles_setting, $wp_registered_settings );
 		$this->assertSame( 'array', $wp_registered_settings[ $roles_setting ]['type'] );
-		$this->assertSame( array(), $wp_registered_settings[ $roles_setting ]['default'] );
+		$this->assertSame( \WordPress\AI\get_default_feature_roles(), $wp_registered_settings[ $roles_setting ]['default'] );
+		$this->assertSame( Settings_Registration::ACCESS_CONTROL_OPTION_GROUP, $wp_registered_settings[ $roles_setting ]['group'] );
 
 		$this->assertArrayHasKey( $users_setting, $wp_registered_settings );
 		$this->assertSame( 'array', $wp_registered_settings[ $users_setting ]['type'] );
 		$this->assertSame( array(), $wp_registered_settings[ $users_setting ]['default'] );
+		$this->assertSame( Settings_Registration::ACCESS_CONTROL_OPTION_GROUP, $wp_registered_settings[ $users_setting ]['group'] );
+	}
+
+	/**
+	 * Tests that register_settings() no longer registers the retired global toggle option.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_register_settings_does_not_register_global_option(): void {
+		global $wp_registered_settings;
+
+		$registration = new Settings_Registration( new Registry() );
+		$registration->register_settings();
+
+		$this->assertArrayNotHasKey( 'wpai_features_enabled', $wp_registered_settings );
 	}
 
 	/**

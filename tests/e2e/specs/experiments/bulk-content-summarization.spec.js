@@ -11,7 +11,6 @@ const {
 	clearFeatureAccessSettings,
 	disableExperiment,
 	enableExperiment,
-	enableExperiments,
 	seedCredentials,
 } = require( '../../utils/helpers' );
 
@@ -37,9 +36,6 @@ test.describe( 'Bulk Content Summarization', () => {
 		requestUtils,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Content Summarization Experiment.
 		await enableExperiment( admin, page, 'Content Summarization' );
 
@@ -66,9 +62,6 @@ test.describe( 'Bulk Content Summarization', () => {
 		requestUtils,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Content Summarization Experiment.
 		await enableExperiment( admin, page, 'Content Summarization' );
 
@@ -123,9 +116,6 @@ test.describe( 'Bulk Content Summarization', () => {
 		requestUtils,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Content Summarization Experiment.
 		await enableExperiment( admin, page, 'Content Summarization' );
 
@@ -180,9 +170,6 @@ test.describe( 'Bulk Content Summarization', () => {
 		await clearCredentials( requestUtils );
 
 		try {
-			// Globally turn on Experiments.
-			await enableExperiments( admin, page );
-
 			// Enable the Content Summarization Experiment.
 			await enableExperiment( admin, page, 'Content Summarization' );
 
@@ -227,9 +214,6 @@ test.describe( 'Bulk Content Summarization', () => {
 		requestUtils,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Content Summarization Experiment.
 		await enableExperiment( admin, page, 'Content Summarization' );
 
@@ -284,9 +268,6 @@ test.describe( 'Bulk Content Summarization', () => {
 		requestUtils,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Disable the Content Summarization Experiment.
 		await disableExperiment( admin, page, 'Content Summarization' );
 

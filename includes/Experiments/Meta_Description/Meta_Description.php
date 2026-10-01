@@ -63,14 +63,13 @@ class Meta_Description extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * Registers post meta, the deactivated_plugin cache hook, and frontend meta description output.
+	 * Registers post meta and frontend meta description output.
 	 *
 	 * @since x.x.x
 	 */
 	protected function register_infrastructure(): void {
 		$this->register_post_meta();
 		$this->maybe_output_meta_description();
-		add_action( 'deactivated_plugin', array( $this, 'clear_active_plugin_cache' ) );
 	}
 
 	/**
@@ -164,15 +163,6 @@ class Meta_Description extends Abstract_Feature {
 				'minContentLength' => get_min_content_length( 'meta-description', 250 ),
 			)
 		);
-	}
-
-	/**
-	 * Clears the active SEO plugin cache when a plugin is deactivated.
-	 *
-	 * @since 0.7.0
-	 */
-	public function clear_active_plugin_cache(): void {
-		delete_transient( 'wpai_active_seo_plugin' );
 	}
 
 	/**
