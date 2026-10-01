@@ -42,6 +42,18 @@ class Settings_Registration {
 	public const OPTION_GROUP = 'ai_experiments';
 
 	/**
+	 * The option group name for access control settings registration.
+	 *
+	 * Kept distinct from OPTION_GROUP so that site-specific access control policies
+	 * (roles and user IDs) are excluded from settings export and import.
+	 *
+	 * @since x.x.x
+	 *
+	 * @var string
+	 */
+	public const ACCESS_CONTROL_OPTION_GROUP = 'ai_experiments_access';
+
+	/**
 	 * The option name for the global experiments toggle.
 	 *
 	 * @since 0.1.0
@@ -199,7 +211,7 @@ class Settings_Registration {
 			);
 
 			register_setting(
-				self::OPTION_GROUP,
+				self::ACCESS_CONTROL_OPTION_GROUP,
 				"wpai_feature_{$feature_id}_roles",
 				array(
 					'type'              => 'array',
@@ -233,7 +245,7 @@ class Settings_Registration {
 			);
 
 			register_setting(
-				self::OPTION_GROUP,
+				self::ACCESS_CONTROL_OPTION_GROUP,
 				"wpai_feature_{$feature_id}_users",
 				array(
 					'type'              => 'array',

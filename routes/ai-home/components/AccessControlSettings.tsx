@@ -133,14 +133,7 @@ export function AccessControlSettings( {
 			stage( { roles: effectiveRoles, users: newUsers } );
 			search( '' );
 		},
-		[
-			stage,
-			effectiveRoles,
-			effectiveUsers,
-			suggestionNameToId,
-			selectedUserMap,
-			search,
-		]
+		[ stage, effectiveRoles, suggestionNameToId, selectedUserMap, search ]
 	);
 
 	const handleInputChange = useCallback(

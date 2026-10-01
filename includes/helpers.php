@@ -988,10 +988,12 @@ function get_default_feature_roles(): array {
 /**
  * Checks whether the current user has access to a given feature based on access control settings.
  *
- * Users with subscriber or contributor roles are denied access directly.
+ * If the user is explicitly listed in the feature's allowed users, access is granted.
+ * Users with subscriber or contributor roles are denied access by default, but this can be overridden via filter.
  * If no roles or users are explicitly configured for the feature, it defaults to allowing all non-subscriber/contributor roles.
  * If access control is configured, the current user must match at least one allowed role or be explicitly listed as an allowed user.
  * If all roles and users are unchecked/empty, access is denied.
+ * All access decisions pass through the `wpai_user_has_role_access` filter.
  *
  * @since x.x.x
  *
@@ -1000,10 +1002,6 @@ function get_default_feature_roles(): array {
  */
 function current_user_can_access_feature( string $feature_id ): bool {
 	$current_user = wp_get_current_user();
-
-	if ( array_intersect( $current_user->roles, array( 'subscriber', 'contributor' ) ) ) {
-		return false;
-	}
 
 	$roles = get_option( "wpai_feature_{$feature_id}_roles", null );
 	$users = get_option( "wpai_feature_{$feature_id}_users", null );
@@ -1017,11 +1015,13 @@ function current_user_can_access_feature( string $feature_id ): bool {
 		$users = is_array( $users ) ? $users : array();
 	}
 
-	if ( in_array( $current_user->ID, array_map( 'intval', $users ), true ) ) {
-		return true;
+	if ( array_intersect( $current_user->roles, array( 'subscriber', 'contributor' ) ) ) {
+		$has_access = false;
+	} elseif ( in_array( $current_user->ID, array_map( 'intval', $users ), true ) ) {
+		$has_access = true;
+	} else {
+		$has_access = (bool) array_intersect( $current_user->roles, $roles );
 	}
-
-	$has_access = (bool) array_intersect( $current_user->roles, $roles );
 
 	/**
 	 * Filters whether the current user has access to a feature based on role.

@@ -115,8 +115,9 @@ class Roles_Users_Controller {
 
 		$search         = (string) $request->get_param( 'search' );
 		$get_users_args = array(
-			'fields' => array( 'ID', 'display_name' ),
-			'number' => self::MAX_USERS,
+			'fields'       => array( 'ID', 'display_name' ),
+			'number'       => self::MAX_USERS,
+			'role__not_in' => array( 'subscriber', 'contributor' ),
 		);
 
 		if ( '' !== $search ) {
