@@ -5,7 +5,7 @@
  * @package WordPress\AI
  */
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\Summarization;
 

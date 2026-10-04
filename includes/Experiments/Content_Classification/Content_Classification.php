@@ -5,7 +5,7 @@
  * @package WordPress\AI
  */
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\Content_Classification;
 
@@ -30,7 +30,6 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @since 0.7.0
  */
 class Content_Classification extends Abstract_Feature {
-
 
 	/**
 	 * The default taxonomy strategy.

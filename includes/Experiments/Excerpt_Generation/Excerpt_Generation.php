@@ -5,7 +5,7 @@
  * @package WordPress\AI
  */
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\Excerpt_Generation;
 
@@ -26,7 +26,6 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @since 0.2.0
  */
 class Excerpt_Generation extends Abstract_Feature {
-
 
 	/**
 	 * {@inheritDoc}

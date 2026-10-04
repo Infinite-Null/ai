@@ -5,7 +5,7 @@
  * @package WordPress\AI
  */
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace WordPress\AI\Experiments\Editorial_Notes;
 
@@ -30,7 +30,6 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @since 0.4.0
  */
 class Editorial_Notes extends Abstract_Feature {
-
 
 	/**
 	 * {@inheritDoc}
