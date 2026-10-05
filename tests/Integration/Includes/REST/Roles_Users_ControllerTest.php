@@ -140,7 +140,7 @@ class Roles_Users_ControllerTest extends WP_UnitTestCase {
 		for ( $i = 1; $i <= 11; $i++ ) {
 			$this->factory->user->create(
 				array(
-					'role'         => 'subscriber',
+					'role'         => 'author',
 					'display_name' => "BatchUser{$i}",
 				)
 			);
