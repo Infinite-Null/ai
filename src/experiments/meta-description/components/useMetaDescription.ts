@@ -7,7 +7,7 @@
  */
 import { dispatch, useDispatch, useSelect } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
-import { useState, useCallback, useMemo } from '@wordpress/element';
+import { useState, useCallback, useMemo, useRef } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 
@@ -41,6 +41,7 @@ interface UseMetaDescriptionReturn {
 	tooShortLabel: string;
 	ensureProviderAvailable: () => boolean;
 	generateDescription: () => Promise< void >;
+	abortGeneration: () => void;
 	applyDescription: ( text: string ) => void;
 	clearSuggestion: () => void;
 }
@@ -66,6 +67,9 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 	const [ isGenerating, setIsGenerating ] = useState( false );
 	const [ suggestion, setSuggestion ] =
 		useState< MetaDescriptionSuggestion | null >( null );
+
+	// Ref to the active AbortController so generation can be cancelled.
+	const abortControllerRef = useRef< AbortController | null >( null );
 
 	const ensureProviderAvailable = useCallback(
 		() => ensureProvider( NOTICE_ID ),
@@ -105,10 +109,23 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 		minContentLength
 	);
 
+	const abortGeneration = useCallback( () => {
+		if ( abortControllerRef.current ) {
+			abortControllerRef.current.abort();
+			abortControllerRef.current = null;
+		}
+	}, [] );
+
 	const generateDescription = useCallback( async () => {
 		if ( ! ensureProvider( NOTICE_ID ) ) {
 			return;
 		}
+
+		// Cancel any in-flight request before starting a new one.
+		abortGeneration();
+
+		const controller = new AbortController();
+		abortControllerRef.current = controller;
 
 		setIsGenerating( true );
 		setSuggestion( null );
@@ -126,7 +143,8 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 
 			const response = await runAbility< MetaDescriptionAbilityResponse >(
 				'ai/meta-description',
-				params
+				params,
+				{ signal: controller.signal }
 			);
 
 			if ( response?.description ) {
@@ -138,6 +156,11 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 				);
 			}
 		} catch ( error: any ) {
+			// Silently ignore cancellations — the user intentionally stopped the request.
+			if ( error?.name === 'AbortError' ) {
+				return;
+			}
+
 			const message =
 				typeof error === 'string'
 					? error
@@ -149,9 +172,14 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 				isDismissible: true,
 			} );
 		} finally {
+			// Only clear the generating state if this controller is still current
+			// (it may have been replaced by a newer call to generateDescription).
+			if ( abortControllerRef.current === controller ) {
+				abortControllerRef.current = null;
+			}
 			setIsGenerating( false );
 		}
-	}, [ content, title, postId, removeNotice, createErrorNotice ] );
+	}, [ content, title, postId, removeNotice, createErrorNotice, abortGeneration ] );
 
 	const applyDescription = useCallback(
 		( text: string ) => {
@@ -174,6 +202,7 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 		tooShortLabel,
 		ensureProviderAvailable,
 		generateDescription,
+		abortGeneration,
 		applyDescription,
 		clearSuggestion,
 	};

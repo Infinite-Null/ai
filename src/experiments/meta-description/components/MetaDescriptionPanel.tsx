@@ -32,6 +32,7 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 		tooShortLabel,
 		ensureProviderAvailable,
 		generateDescription,
+		abortGeneration,
 		applyDescription,
 		clearSuggestion,
 	} = useMetaDescription();
@@ -176,6 +177,7 @@ export default function MetaDescriptionPanel(): React.JSX.Element {
 						}
 					} }
 					onClose={ () => {
+						abortGeneration();
 						clearSuggestion();
 						setIsModalOpen( false );
 					} }
