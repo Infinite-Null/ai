@@ -7,7 +7,13 @@
  */
 import { dispatch, useDispatch, useSelect } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
-import { useState, useCallback, useMemo } from '@wordpress/element';
+import {
+	useState,
+	useCallback,
+	useMemo,
+	useRef,
+	useEffect,
+} from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 
@@ -41,6 +47,7 @@ interface UseMetaDescriptionReturn {
 	tooShortLabel: string;
 	ensureProviderAvailable: () => boolean;
 	generateDescription: () => Promise< void >;
+	cancelGeneration: () => void;
 	applyDescription: ( text: string ) => void;
 	clearSuggestion: () => void;
 }
@@ -66,6 +73,9 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 	const [ isGenerating, setIsGenerating ] = useState( false );
 	const [ suggestion, setSuggestion ] =
 		useState< MetaDescriptionSuggestion | null >( null );
+
+	const abortControllerRef = useRef< AbortController | null >( null );
+	const requestIdRef = useRef( 0 );
 
 	const ensureProviderAvailable = useCallback(
 		() => ensureProvider( NOTICE_ID ),
@@ -105,10 +115,30 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 		minContentLength
 	);
 
+	const cancelGeneration = useCallback( () => {
+		requestIdRef.current += 1;
+
+		if ( abortControllerRef.current ) {
+			abortControllerRef.current.abort();
+			abortControllerRef.current = null;
+		}
+
+		removeNotice( NOTICE_ID );
+		setIsGenerating( false );
+	}, [ removeNotice ] );
+
 	const generateDescription = useCallback( async () => {
 		if ( ! ensureProvider( NOTICE_ID ) ) {
 			return;
 		}
+
+		if ( abortControllerRef.current ) {
+			abortControllerRef.current.abort();
+		}
+
+		const controller = new AbortController();
+		abortControllerRef.current = controller;
+		const currentRequestId = ++requestIdRef.current;
 
 		setIsGenerating( true );
 		setSuggestion( null );
@@ -126,8 +156,13 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 
 			const response = await runAbility< MetaDescriptionAbilityResponse >(
 				'ai/meta-description',
-				params
+				params,
+				{ signal: controller.signal }
 			);
+
+			if ( currentRequestId !== requestIdRef.current ) {
+				return;
+			}
 
 			if ( response?.description ) {
 				setSuggestion( response.description );
@@ -138,6 +173,18 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 				);
 			}
 		} catch ( error: any ) {
+			if ( currentRequestId !== requestIdRef.current ) {
+				return;
+			}
+
+			if (
+				( error instanceof DOMException &&
+					error.name === 'AbortError' ) ||
+				error?.name === 'AbortError'
+			) {
+				return;
+			}
+
 			const message =
 				typeof error === 'string'
 					? error
@@ -149,9 +196,25 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 				isDismissible: true,
 			} );
 		} finally {
-			setIsGenerating( false );
+			if ( abortControllerRef.current === controller ) {
+				abortControllerRef.current = null;
+			}
+
+			if ( currentRequestId === requestIdRef.current ) {
+				setIsGenerating( false );
+			}
 		}
 	}, [ content, title, postId, removeNotice, createErrorNotice ] );
+
+	useEffect( () => {
+		return () => {
+			requestIdRef.current += 1;
+			if ( abortControllerRef.current ) {
+				abortControllerRef.current.abort();
+				abortControllerRef.current = null;
+			}
+		};
+	}, [] );
 
 	const applyDescription = useCallback(
 		( text: string ) => {
@@ -174,6 +237,7 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 		tooShortLabel,
 		ensureProviderAvailable,
 		generateDescription,
+		cancelGeneration,
 		applyDescription,
 		clearSuggestion,
 	};
