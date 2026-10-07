@@ -116,16 +116,15 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 	);
 
 	const cancelGeneration = useCallback( () => {
-		requestIdRef.current += 1;
-
-		if ( abortControllerRef.current ) {
-			abortControllerRef.current.abort();
-			abortControllerRef.current = null;
+		if ( ! abortControllerRef.current ) {
+			return;
 		}
 
-		removeNotice( NOTICE_ID );
+		requestIdRef.current += 1;
+		abortControllerRef.current.abort();
+		abortControllerRef.current = null;
 		setIsGenerating( false );
-	}, [ removeNotice ] );
+	}, [] );
 
 	const generateDescription = useCallback( async () => {
 		if ( ! ensureProvider( NOTICE_ID ) ) {
@@ -174,14 +173,6 @@ export function useMetaDescription(): UseMetaDescriptionReturn {
 			}
 		} catch ( error: any ) {
 			if ( currentRequestId !== requestIdRef.current ) {
-				return;
-			}
-
-			if (
-				( error instanceof DOMException &&
-					error.name === 'AbortError' ) ||
-				error?.name === 'AbortError'
-			) {
 				return;
 			}
 
