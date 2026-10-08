@@ -25,7 +25,7 @@ interface RenameModalButtonProps {
 }
 
 /**
- * Renders the "Regenerate title" button for the Rename modal.
+ * Renders the "Generate title" button for the Rename modal.
  *
  * @param props              Component props.
  * @param props.inputElement Target title input element to populate.

@@ -222,7 +222,7 @@ test.describe( 'Title Generation Experiment', () => {
 		).not.toBeVisible();
 	} );
 
-	test( 'Can regenerate title from the Rename modal in the Post tab', async ( {
+	test( 'Can generate title from the Rename modal in the Post tab', async ( {
 		admin,
 		editor,
 		page,
@@ -256,13 +256,13 @@ test.describe( 'Title Generation Experiment', () => {
 		const renameModal = page.getByRole( 'dialog', { name: 'Rename' } );
 		await expect( renameModal ).toBeVisible();
 
-		// Ensure the Regenerate title button is visible right before Cancel.
+		// Ensure the generate title button is visible right before Cancel.
 		const regenerateButton = renameModal.getByRole( 'button', {
-			name: 'Regenerate title',
+			name: 'Generate title',
 		} );
 		await expect( regenerateButton ).toBeVisible();
 
-		// Click Regenerate title.
+		// Click Generate title.
 		await regenerateButton.click();
 
 		// Ensure the title textbox in the modal is updated with the generated title.

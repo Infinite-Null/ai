@@ -2,7 +2,7 @@
  * Rename modal wrapper component.
  *
  * Observes document mutations to detect when the Rename modal is opened,
- * and attaches the "Regenerate title" button immediately before the Cancel button.
+ * and attaches the "Generate title" button immediately before the Cancel button.
  */
 
 /**
