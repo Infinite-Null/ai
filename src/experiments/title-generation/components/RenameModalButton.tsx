@@ -52,7 +52,7 @@ export default function RenameModalButton( {
 
 	const buttonLabel = isGenerating
 		? __( 'Generating…', 'ai' )
-		: __( 'Regenerate title', 'ai' );
+		: __( 'Generate title', 'ai' );
 
 	const tooShortLabel = sprintf(
 		/* translators: %d: minimum number of characters required. */
