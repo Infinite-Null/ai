@@ -352,6 +352,10 @@ abstract class Abstract_Feature implements Feature {
 	 * @return bool True if current user has access, false otherwise.
 	 */
 	public function current_user_can_access(): bool {
+		if ( defined( 'WP_CLI' ) && WP_CLI ) {
+			return true;
+		}
+
 		if ( ! $this->supports_access_control() ) {
 			return true;
 		}
