@@ -46,13 +46,17 @@ export default function RenameModalButton( {
 	}, [] );
 
 	const [ isGenerating, setIsGenerating ] = useState< boolean >( false );
+	const [ hasGenerated, setHasGenerated ] = useState< boolean >( false );
 
 	const { minContentLength } = getSettings();
 	const isContentTooShort = ! hasMinimumContent( content, minContentLength );
 
-	const buttonLabel = isGenerating
-		? __( 'Generating…', 'ai' )
-		: __( 'Generate title', 'ai' );
+	let buttonLabel: string = __( 'Generate title', 'ai' );
+	if ( isGenerating ) {
+		buttonLabel = __( 'Generating…', 'ai' );
+	} else if ( hasGenerated ) {
+		buttonLabel = __( 'Regenerate title', 'ai' );
+	}
 
 	const tooShortLabel = sprintf(
 		/* translators: %d: minimum number of characters required. */
@@ -96,6 +100,8 @@ export default function RenameModalButton( {
 				targetInput.focus();
 				targetInput.select();
 			}
+
+			setHasGenerated( true );
 		} catch ( error: any ) {
 			const message =
 				typeof error === 'string'
