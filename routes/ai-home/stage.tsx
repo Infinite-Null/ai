@@ -963,13 +963,35 @@ function AISettingsPage() {
 		};
 	}, [ featureDefinitions, featureGroups ] );
 
+	const savedUserIds = useMemo< number[] >( () => {
+		if ( ! editedRecord ) {
+			return [];
+		}
+		const userIds = new Set< number >();
+		for ( const [ key, value ] of Object.entries( editedRecord ) ) {
+			if (
+				key.startsWith( 'wpai_feature_' ) &&
+				key.endsWith( '_users' ) &&
+				Array.isArray( value )
+			) {
+				value.forEach( ( id ) => {
+					const num = Number( id );
+					if ( Number.isInteger( num ) && num > 0 ) {
+						userIds.add( num );
+					}
+				} );
+			}
+		}
+		return Array.from( userIds );
+	}, [ editedRecord ] );
+
 	return (
 		<AdvancedSettingsContext.Provider value={ advancedSettings }>
 			<DeveloperModeContext.Provider value={ isDeveloperMode }>
 				<AccessControlModeContext.Provider
 					value={ isAccessControlMode }
 				>
-					<RolesUsersProvider>
+					<RolesUsersProvider include={ savedUserIds }>
 						<Page
 							visual={ <AIIcon /> }
 							title={ __( 'AI', 'ai' ) }

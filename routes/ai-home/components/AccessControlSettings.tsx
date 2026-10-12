@@ -19,6 +19,11 @@ import { useAccessControlSettings } from '../hooks/use-access-control-settings';
 import { useRolesUsersContext } from '../hooks/use-roles-users';
 import type { Role, User } from '../hooks/use-roles-users';
 
+interface UserTokenItem {
+	id?: number;
+	value: string;
+}
+
 interface AccessControlSettingsProps {
 	featureId: string;
 	roles?: Role[];
@@ -28,6 +33,10 @@ interface AccessControlSettingsProps {
 	isSearching?: boolean;
 	search?: ( query: string ) => void;
 }
+
+const formatUserToken = ( id: number, name?: string ): string => {
+	return name ? `${ name } (#${ id })` : id.toString();
+};
 
 export function AccessControlSettings( {
 	featureId,
@@ -57,22 +66,24 @@ export function AccessControlSettings( {
 
 	const effectiveRoles = localRoles ?? settings.roles;
 	const effectiveUsers = localUsers ?? settings.users;
-	const suggestionNameToId = useMemo( () => {
+
+	const suggestionTokenToId = useMemo( () => {
 		const map = new Map< string, number >();
-		suggestions.forEach( ( u: User ) => map.set( u.name, u.id ) );
+		suggestions.forEach( ( u: User ) => {
+			map.set( formatUserToken( u.id, u.name ), u.id );
+			map.set( u.name, u.id );
+		} );
 		return map;
 	}, [ suggestions ] );
 
 	const selectedUsersTokens = useMemo( () => {
-		return effectiveUsers.map(
-			( id ) => selectedUserMap.get( id ) ?? id.toString()
-		);
+		return effectiveUsers.map( ( id ) => ( {
+			id,
+			value: formatUserToken( id, selectedUserMap.get( id ) ),
+		} ) );
 	}, [ effectiveUsers, selectedUserMap ] );
 
-	// Seed selectedUserMap with users returned from the API (capped at
-	// MAX_USERS i.e. 10 at a time). If more than
-	// MAX_USERS users are saved, any beyond the cap won't be included in
-	// this response and will fall back to showing their raw ID.
+	// Seed selectedUserMap with users returned from search suggestions.
 	useEffect( () => {
 		setSelectedUserMap( ( prev ) => {
 			const next = new Map( prev );
@@ -86,7 +97,7 @@ export function AccessControlSettings( {
 		() =>
 			suggestions
 				.filter( ( u: User ) => ! effectiveUsers.includes( u.id ) )
-				.map( ( u: User ) => u.name ),
+				.map( ( u: User ) => formatUserToken( u.id, u.name ) ),
 		[ suggestions, effectiveUsers ]
 	);
 
@@ -102,29 +113,60 @@ export function AccessControlSettings( {
 	);
 
 	const handleUsersChange = useCallback(
-		( tokens: ( string | { value: string } )[] ) => {
+		( tokens: ( string | UserTokenItem )[] ) => {
 			const newUsers: number[] = [];
 			const newMap = new Map< number, string >( selectedUserMap );
 
 			tokens.forEach( ( token ) => {
-				const label = typeof token === 'string' ? token : token.value;
-				let id = suggestionNameToId.get( label );
+				let id: number | undefined;
+				let label = '';
 
+				if ( typeof token === 'object' && token !== null ) {
+					label = token.value;
+					if (
+						'id' in token &&
+						typeof ( token as { id?: unknown } ).id === 'number'
+					) {
+						id = ( token as { id: number } ).id;
+					}
+				} else if ( typeof token === 'string' ) {
+					label = token;
+				}
+
+				// If id is not already known from the token object, extract from label.
 				if ( id === undefined ) {
-					for ( const [
-						mapId,
-						mapLabel,
-					] of selectedUserMap.entries() ) {
-						if ( mapLabel === label ) {
-							id = mapId;
-							break;
-						}
+					// 1. Check formatted token e.g. "Jane Doe (#12)" or "(ID: 12)"
+					const idMatch = label.match( /(?:#|ID:\s*)(\d+)\)?$/i );
+					if ( idMatch ) {
+						id = Number( idMatch[ 1 ] );
 					}
 				}
 
+				if ( id === undefined ) {
+					// 2. Check if the token is a numeric user ID string e.g. "12"
+					const numericId = Number( label );
+					if ( Number.isInteger( numericId ) && numericId > 0 ) {
+						id = numericId;
+					}
+				}
+
+				if ( id === undefined ) {
+					// 3. Fallback: match from suggestionTokenToId
+					id = suggestionTokenToId.get( label );
+				}
+
 				if ( id !== undefined ) {
-					newUsers.push( id );
-					newMap.set( id, label );
+					if ( ! newUsers.includes( id ) ) {
+						newUsers.push( id );
+					}
+
+					// Extract clean display name if available and save in newMap
+					const cleanName = label
+						.replace( /\s*\((?:#|ID:\s*)\d+\)$/i, '' )
+						.trim();
+					if ( cleanName && cleanName !== id.toString() ) {
+						newMap.set( id, cleanName );
+					}
 				}
 			} );
 
@@ -133,7 +175,7 @@ export function AccessControlSettings( {
 			stage( { roles: effectiveRoles, users: newUsers } );
 			search( '' );
 		},
-		[ stage, effectiveRoles, suggestionNameToId, selectedUserMap, search ]
+		[ stage, effectiveRoles, suggestionTokenToId, selectedUserMap, search ]
 	);
 
 	const handleInputChange = useCallback(

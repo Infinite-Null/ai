@@ -28,7 +28,7 @@ export interface User {
 	name: string;
 }
 
-interface RolesUsersResponse {
+export interface RolesUsersResponse {
 	roles: Role[];
 	users: User[];
 }
@@ -66,18 +66,21 @@ export const RolesUsersContext = createContext< RolesUsersContextValue | null >(
  * Provider component that fetches roles and users once at the top level
  * when access control mode is active and shares the state with child components.
  *
- * @param {Object}          props          Component props.
- * @param {React.ReactNode} props.children Child elements.
+ * @param {Object}          props           Component props.
+ * @param {React.ReactNode} props.children  Child elements.
+ * @param {number[]}        [props.include] Optional user IDs to include.
  * @return {React.JSX.Element} The Provider component.
  */
 export function RolesUsersProvider( {
 	children,
+	include,
 }: {
 	children: React.ReactNode;
+	include?: number[];
 } ): React.JSX.Element {
 	const isAccessControlMode = useAccessControlModeContext();
 	const rolesData = useRoles( isAccessControlMode );
-	const userSearchData = useUserSearch( isAccessControlMode );
+	const userSearchData = useUserSearch( isAccessControlMode, include );
 
 	const value = useMemo(
 		() => ( {
@@ -151,10 +154,14 @@ export function useRoles( enabled = true ): UseRolesReturn {
  * Provides debounced async user search against the REST endpoint.
  * Loads an initial set of users when enabled and updates suggestions as the user types.
  *
- * @param {boolean} enabled Whether user search is enabled.
+ * @param {boolean}  enabled Whether user search is enabled.
+ * @param {number[]} include Optional user IDs to ensure are included in results.
  * @return {UseUserSearchReturn} The suggestions list, loading flag, and search trigger.
  */
-export function useUserSearch( enabled = true ): UseUserSearchReturn {
+export function useUserSearch(
+	enabled = true,
+	include?: number[]
+): UseUserSearchReturn {
 	const [ suggestions, setSuggestions ] = useState< User[] >( [] );
 	const [ isSearching, setIsSearching ] = useState( false );
 	const debounceTimer = useRef< ReturnType< typeof setTimeout > | null >(
@@ -162,14 +169,33 @@ export function useUserSearch( enabled = true ): UseUserSearchReturn {
 	);
 	const isMountedRef = useRef( true );
 
+	const includeKey = useMemo(
+		() =>
+			include && include.length > 0
+				? include
+						.slice()
+						.sort( ( a, b ) => a - b )
+						.join( ',' )
+				: '',
+		[ include ]
+	);
+
 	const fetchUsers = useCallback(
 		( query: string ) => {
 			if ( ! enabled ) {
 				return;
 			}
 			setIsSearching( true );
-			const path = query
-				? `/ai/v1/roles-users?search=${ encodeURIComponent( query ) }`
+			const params = new URLSearchParams();
+			if ( query ) {
+				params.set( 'search', query );
+			}
+			if ( includeKey ) {
+				params.set( 'include', includeKey );
+			}
+			const queryString = params.toString();
+			const path = queryString
+				? `/ai/v1/roles-users?${ queryString }`
 				: '/ai/v1/roles-users';
 
 			apiFetch< RolesUsersResponse >( { path } )
@@ -185,7 +211,7 @@ export function useUserSearch( enabled = true ): UseUserSearchReturn {
 					}
 				} );
 		},
-		[ enabled ]
+		[ enabled, includeKey ]
 	);
 
 	useEffect( () => {

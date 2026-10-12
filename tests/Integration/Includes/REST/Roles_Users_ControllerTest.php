@@ -53,6 +53,9 @@ class Roles_Users_ControllerTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'search', $route['args'] );
 		$this->assertSame( 'string', $route['args']['search']['type'] );
 		$this->assertSame( 'sanitize_text_field', $route['args']['search']['sanitize_callback'] );
+		$this->assertArrayHasKey( 'include', $route['args'] );
+		$this->assertSame( 'array', $route['args']['include']['type'] );
+		$this->assertSame( 'wp_parse_id_list', $route['args']['include']['sanitize_callback'] );
 	}
 
 	/**

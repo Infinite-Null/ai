@@ -70,10 +70,18 @@ class Roles_Users_Controller {
 				'callback'            => array( $this, 'get_roles_users' ),
 				'permission_callback' => array( $this, 'check_permission' ),
 				'args'                => array(
-					'search' => array(
+					'search'  => array(
 						'type'              => 'string',
 						'default'           => '',
 						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'include' => array(
+						'type'              => 'array',
+						'items'             => array(
+							'type' => 'integer',
+						),
+						'default'           => array(),
+						'sanitize_callback' => 'wp_parse_id_list',
 					),
 				),
 			)
@@ -113,7 +121,20 @@ class Roles_Users_Controller {
 			);
 		}
 
-		$search         = (string) $request->get_param( 'search' );
+		$search        = (string) $request->get_param( 'search' );
+		$include_param = $request->get_param( 'include' );
+		$include_ids   = ! empty( $include_param ) ? wp_parse_id_list( $include_param ) : array();
+
+		$included_users = array();
+		if ( ! empty( $include_ids ) ) {
+			$included_users = get_users(
+				array(
+					'fields'  => array( 'ID', 'display_name' ),
+					'include' => $include_ids,
+				)
+			);
+		}
+
 		$get_users_args = array(
 			'fields'       => array( 'ID', 'display_name' ),
 			'number'       => self::MAX_USERS,
@@ -125,10 +146,15 @@ class Roles_Users_Controller {
 			$get_users_args['search_columns'] = array( 'user_login', 'display_name', 'user_email' );
 		}
 
-		$users    = array();
-		$wp_users = get_users( $get_users_args );
+		if ( ! empty( $include_ids ) ) {
+			// phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_exclude -- Exclude already included users from suggestions to prevent duplicate results.
+			$get_users_args['exclude'] = $include_ids;
+		}
 
-		foreach ( $wp_users as $user ) {
+		$wp_users = get_users( $get_users_args );
+		$users    = array();
+
+		foreach ( array_merge( $included_users, $wp_users ) as $user ) {
 			$users[] = array(
 				'id'   => (int) $user->ID,
 				'name' => $user->display_name,
