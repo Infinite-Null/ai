@@ -10,7 +10,7 @@ AI features, experiments and capabilities for WordPress.
 
 == Description ==
 
-The A plugin brings AI-powered features directly into your WordPress admin and editing experience.
+The AI plugin brings AI-powered features directly into your WordPress admin and editing experience.
 
 Requires the WordPress Block Editor.  The Classic Editor plugin and other non-Block Editor editing experiences are not supported.
 
