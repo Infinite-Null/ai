@@ -90,11 +90,48 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Checks whether WordPress core declares the setting flag natively.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return bool True when core declares show_in_abilities in register_setting defaults.
+	 */
+	private function core_declares_setting_flag(): bool {
+		static $declared = null;
+
+		if ( null !== $declared ) {
+			return $declared;
+		}
+
+		$captured = null;
+		$spy      = static function ( $args, $defaults ) use ( &$captured ) {
+			$captured = $defaults;
+			return $args;
+		};
+
+		add_filter( 'register_setting_args', $spy, 1, 2 );
+		try {
+			register_setting( 'wpai_probe_group', 'wpai_probe_setting', array( 'type' => 'string' ) );
+		} finally {
+			remove_filter( 'register_setting_args', $spy, 1 );
+			unregister_setting( 'wpai_probe_group', 'wpai_probe_setting' );
+		}
+
+		$declared = is_array( $captured ) && array_key_exists( 'show_in_abilities', $captured );
+
+		return $declared;
+	}
+
+	/**
 	 * A curated setting is flagged with `show_in_abilities => true`.
 	 *
 	 * @since 1.1.0
 	 */
 	public function test_marks_curated_boolean_setting(): void {
+		if ( $this->core_declares_setting_flag() ) {
+			$this->markTestSkipped( 'Core declares show_in_abilities natively; the polyfill stands down.' );
+		}
+
 		$this->register_setting( 'general', 'blogname', array( 'type' => 'string' ) );
 
 		$settings = get_registered_settings();
@@ -108,6 +145,10 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	 * @since 1.1.0
 	 */
 	public function test_marks_curated_array_setting(): void {
+		if ( $this->core_declares_setting_flag() ) {
+			$this->markTestSkipped( 'Core declares show_in_abilities natively; the polyfill stands down.' );
+		}
+
 		$this->register_setting( 'discussion', 'default_comment_status', array( 'type' => 'string' ) );
 
 		$settings = get_registered_settings();
@@ -242,6 +283,10 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	 * @since 1.2.0
 	 */
 	public function test_core_does_not_yet_declare_the_setting_flag(): void {
+		if ( $this->core_declares_setting_flag() ) {
+			$this->markTestSkipped( 'Core now declares show_in_abilities natively; the polyfill has stood down.' );
+		}
+
 		$captured = null;
 		$spy      = static function ( $args, $defaults ) use ( &$captured ) {
 			$captured = $defaults;
