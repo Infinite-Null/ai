@@ -278,7 +278,7 @@ class Show_In_AbilitiesTest extends WP_UnitTestCase {
 	 * Core does not declare the setting flag yet, so the polyfill is still needed.
 	 *
 	 * A tripwire. It reads the defaults core actually passes to the `register_setting_args`
-	 * filter, so it fails when core starts shipping the argument.
+	 * filter, and skips when core starts shipping the argument natively.
 	 *
 	 * @since 1.2.0
 	 */
