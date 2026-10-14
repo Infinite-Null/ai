@@ -43,7 +43,7 @@ export default function LabelGenerationBlockSettingsMenuItem( {
 
 				return (
 					<BlockMenuItemInner
-						clientId={ clientId }
+						clientId={ clientId as string }
 						minContentLength={ minContentLength }
 						isAnyGenerating={ isAnyGenerating }
 						activeClientId={ activeClientId }
@@ -99,25 +99,14 @@ function BlockMenuItemInner( {
 	);
 	const isThisBlockGenerating = activeClientId === clientId;
 
-	const label = isThisBlockGenerating
-		? __( 'Generating label…', 'ai' )
-		: hasExistingLabel
-		? __( 'Regenerate Block Label', 'ai' )
-		: __( 'Generate Block Label', 'ai' );
+	const label = getMenuItemLabel( isThisBlockGenerating, hasExistingLabel );
 
-	const info =
-		isAnyGenerating && ! isThisBlockGenerating
-			? __( 'Another label is currently being generated.', 'ai' )
-			: isContentTooShort
-			? sprintf(
-					/* translators: %d: minimum number of characters required */
-					__(
-						'At least %d characters required to generate a label.',
-						'ai'
-					),
-					minContentLength
-			  )
-			: undefined;
+	const info = getMenuItemInfo(
+		isAnyGenerating,
+		isThisBlockGenerating,
+		isContentTooShort,
+		minContentLength
+	);
 
 	return (
 		<MenuItem
@@ -131,4 +120,36 @@ function BlockMenuItemInner( {
 			{ label }
 		</MenuItem>
 	);
+}
+
+function getMenuItemLabel(
+	isGenerating: boolean,
+	hasExistingLabel: boolean
+): string {
+	if ( isGenerating ) {
+		return __( 'Generating label…', 'ai' );
+	}
+	if ( hasExistingLabel ) {
+		return __( 'Regenerate Block Label', 'ai' );
+	}
+	return __( 'Generate Block Label', 'ai' );
+}
+
+function getMenuItemInfo(
+	isAnyGenerating: boolean,
+	isThisBlockGenerating: boolean,
+	isContentTooShort: boolean,
+	minContentLength: number
+): string | undefined {
+	if ( isAnyGenerating && ! isThisBlockGenerating ) {
+		return __( 'Another label is currently being generated.', 'ai' );
+	}
+	if ( isContentTooShort ) {
+		return sprintf(
+			/* translators: %d: minimum number of characters required */
+			__( 'At least %d characters required to generate a label.', 'ai' ),
+			minContentLength
+		);
+	}
+	return undefined;
 }
