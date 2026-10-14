@@ -11,7 +11,10 @@ import { store as editorStore } from '@wordpress/editor';
 /**
  * Internal dependencies
  */
-import { useLabelGeneration, type UseLabelGenerationReturn } from '../hooks/useLabelGeneration';
+import {
+	useLabelGeneration,
+	type UseLabelGenerationReturn,
+} from '../hooks/useLabelGeneration';
 import { getSettings } from '../utils';
 
 const LIST_VIEW_CONTAINER_SELECTOR =
@@ -47,15 +50,17 @@ export default function LabelGenerationListViewHeader( {
 	useEffect( () => {
 		if ( ! activeClientId ) {
 			document
-				.querySelectorAll< HTMLElement >( '.ai-label-generation--is-generating' )
+				.querySelectorAll< HTMLElement >(
+					'.ai-label-generation--is-generating'
+				)
 				.forEach( ( el ) => {
 					el.classList.remove( 'ai-label-generation--is-generating' );
 					el.removeAttribute( 'aria-busy' );
 					el.removeAttribute( 'aria-disabled' );
 					el.removeAttribute( 'inert' );
-					el.querySelectorAll< HTMLButtonElement >( 'button' ).forEach( ( btn ) =>
-						btn.removeAttribute( 'disabled' )
-					);
+					el.querySelectorAll< HTMLButtonElement >(
+						'button'
+					).forEach( ( btn ) => btn.removeAttribute( 'disabled' ) );
 				} );
 			return;
 		}
@@ -68,9 +73,9 @@ export default function LabelGenerationListViewHeader( {
 			blockRow.setAttribute( 'aria-busy', 'true' );
 			blockRow.setAttribute( 'aria-disabled', 'true' );
 			blockRow.setAttribute( 'inert', '' );
-			blockRow.querySelectorAll< HTMLButtonElement >( 'button' ).forEach( ( btn ) =>
-				btn.setAttribute( 'disabled', 'true' )
-			);
+			blockRow
+				.querySelectorAll< HTMLButtonElement >( 'button' )
+				.forEach( ( btn ) => btn.setAttribute( 'disabled', 'true' ) );
 		}
 
 		return () => {
@@ -81,9 +86,9 @@ export default function LabelGenerationListViewHeader( {
 				blockRow.removeAttribute( 'aria-busy' );
 				blockRow.removeAttribute( 'aria-disabled' );
 				blockRow.removeAttribute( 'inert' );
-				blockRow.querySelectorAll< HTMLButtonElement >( 'button' ).forEach( ( btn ) =>
-					btn.removeAttribute( 'disabled' )
-				);
+				blockRow
+					.querySelectorAll< HTMLButtonElement >( 'button' )
+					.forEach( ( btn ) => btn.removeAttribute( 'disabled' ) );
 			}
 		};
 	}, [ activeClientId ] );
@@ -111,8 +116,7 @@ export default function LabelGenerationListViewHeader( {
 			}
 
 			mountPoint = document.createElement( 'div' );
-			mountPoint.className =
-				'ai-label-generation-list-view-header-mount';
+			mountPoint.className = 'ai-label-generation-list-view-header-mount';
 			container.prepend( mountPoint );
 			setTargetContainer( mountPoint );
 			return true;

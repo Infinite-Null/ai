@@ -120,4 +120,3 @@ export function getBlockSubtreeContent( block: Block ): string {
 	);
 	return combineContent( [ getBlockText( block ), ...childParts ] );
 }
-

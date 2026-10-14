@@ -29,6 +29,3 @@ function LabelGeneration() {
 registerPlugin( 'ai-label-generation', {
 	render: LabelGeneration,
 } );
-
-
-

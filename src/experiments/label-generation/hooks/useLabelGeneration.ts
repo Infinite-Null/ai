@@ -12,7 +12,12 @@ import { store as noticesStore } from '@wordpress/notices';
  */
 import { hasMinimumContent } from '../../../utils/character-count';
 import { ensureProvider } from '../../../utils/provider-status';
-import { collectLabelCandidates, generateLabel, getBlockSubtreeContent, getSettings } from '../utils';
+import {
+	collectLabelCandidates,
+	generateLabel,
+	getBlockSubtreeContent,
+	getSettings,
+} from '../utils';
 import { LABEL_GENERATION_NOTICE_ID } from '../constants';
 import { getErrorMessage } from '../../../utils/errors';
 import type { Block } from '../types';
@@ -30,7 +35,9 @@ export type UseLabelGenerationReturn = {
 
 export function useLabelGeneration(): UseLabelGenerationReturn {
 	const [ isLoading, setIsLoading ] = useState( false );
-	const [ activeClientId, setActiveClientId ] = useState< string | null >( null );
+	const [ activeClientId, setActiveClientId ] = useState< string | null >(
+		null
+	);
 	const [ progress, setProgress ] = useState( 0 );
 	const [ total, setTotal ] = useState( 0 );
 
@@ -205,4 +212,3 @@ export function useLabelGeneration(): UseLabelGenerationReturn {
 		generateSingleBlock,
 	};
 }
-

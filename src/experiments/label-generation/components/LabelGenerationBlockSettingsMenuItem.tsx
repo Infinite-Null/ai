@@ -2,8 +2,10 @@
  * WordPress dependencies
  */
 import { MenuItem, Spinner } from '@wordpress/components';
-import { BlockSettingsMenuControls } from '@wordpress/block-editor';
-import { store as blockEditorStore } from '@wordpress/block-editor';
+import {
+	BlockSettingsMenuControls,
+	store as blockEditorStore,
+} from '@wordpress/block-editor';
 import { useSelect } from '@wordpress/data';
 import { __, sprintf } from '@wordpress/i18n';
 import { pencil } from '@wordpress/icons';
@@ -68,9 +70,11 @@ function BlockMenuItemInner( {
 } ) {
 	const block = useSelect(
 		( sel ) =>
-			( sel( blockEditorStore ) as {
-				getBlock: ( id: string ) => Block | null;
-			} ).getBlock( clientId ),
+			(
+				sel( blockEditorStore ) as {
+					getBlock: ( id: string ) => Block | null;
+				}
+			 ).getBlock( clientId ),
 		[ clientId ]
 	);
 
