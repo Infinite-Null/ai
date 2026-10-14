@@ -43,28 +43,46 @@ export default function LabelGenerationListViewHeader( {
 		generate: generateLabel,
 	} = externalLabelGeneration ?? defaultLabelGeneration;
 
-	// Visual indicator on the block currently being processed in List View.
+	// Visual and physical disable on the block currently being processed in List View.
 	useEffect( () => {
 		if ( ! activeClientId ) {
 			document
-				.querySelectorAll( '.ai-label-generation--is-generating' )
-				.forEach( ( el ) =>
-					el.classList.remove( 'ai-label-generation--is-generating' )
-				);
+				.querySelectorAll< HTMLElement >( '.ai-label-generation--is-generating' )
+				.forEach( ( el ) => {
+					el.classList.remove( 'ai-label-generation--is-generating' );
+					el.removeAttribute( 'aria-busy' );
+					el.removeAttribute( 'aria-disabled' );
+					el.removeAttribute( 'inert' );
+					el.querySelectorAll< HTMLButtonElement >( 'button' ).forEach( ( btn ) =>
+						btn.removeAttribute( 'disabled' )
+					);
+				} );
 			return;
 		}
 
-		const blockRow = document.querySelector(
+		const blockRow = document.querySelector< HTMLElement >(
 			`[data-block="${ activeClientId }"]`
 		);
 		if ( blockRow ) {
 			blockRow.classList.add( 'ai-label-generation--is-generating' );
+			blockRow.setAttribute( 'aria-busy', 'true' );
+			blockRow.setAttribute( 'aria-disabled', 'true' );
+			blockRow.setAttribute( 'inert', '' );
+			blockRow.querySelectorAll< HTMLButtonElement >( 'button' ).forEach( ( btn ) =>
+				btn.setAttribute( 'disabled', 'true' )
+			);
 		}
 
 		return () => {
 			if ( blockRow ) {
 				blockRow.classList.remove(
 					'ai-label-generation--is-generating'
+				);
+				blockRow.removeAttribute( 'aria-busy' );
+				blockRow.removeAttribute( 'aria-disabled' );
+				blockRow.removeAttribute( 'inert' );
+				blockRow.querySelectorAll< HTMLButtonElement >( 'button' ).forEach( ( btn ) =>
+					btn.removeAttribute( 'disabled' )
 				);
 			}
 		};

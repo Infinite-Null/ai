@@ -12,29 +12,41 @@
 }
 
 .block-editor-list-view-leaf.ai-label-generation--is-generating {
-	animation: ai-label-pulse 1.2s infinite ease-in-out;
+	opacity: 0.6;
+	pointer-events: none !important;
+	user-select: none !important;
+	cursor: wait !important;
+	background-size: 100px 100%;
+	background-image: linear-gradient(
+		-45deg,
+		rgba(0, 0, 0, 0.03) 33%,
+		rgba(0, 0, 0, 0.09) 33%,
+		rgba(0, 0, 0, 0.09) 70%,
+		rgba(0, 0, 0, 0.03) 70%
+	);
+	animation: ai-label-generation-busy-animation 2500ms infinite linear;
 	position: relative;
 
-	&::after {
-		content: '';
-		position: absolute;
-		left: 0;
-		top: 0;
-		bottom: 0;
-		width: 3px;
-		background: var(--wp-admin-theme-color, #007cba);
+	* {
+		pointer-events: none !important;
+		user-select: none !important;
+	}
+
+	.block-editor-list-view-block-select-button,
+	a,
+	button {
+		cursor: wait !important;
+		pointer-events: none !important;
+		-webkit-user-drag: none !important;
 	}
 }
 
-@keyframes ai-label-pulse {
-	0%,
-	100% {
-		background-color: transparent;
-	}
-	50% {
-		background-color: rgba(0, 124, 186, 0.12);
+@keyframes ai-label-generation-busy-animation {
+	0% {
+		background-position: 200px 0;
 	}
 }
+
 
 
 
