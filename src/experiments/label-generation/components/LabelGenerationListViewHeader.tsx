@@ -180,7 +180,7 @@ export default function LabelGenerationListViewHeader( {
 				icon={ <Icon icon={ pencil } aria-hidden="true" /> }
 				variant="secondary"
 				className="ai-label-generation-list-view-header__button"
-				size="compact"
+				__next40pxDefaultSize
 				onClick={ generateLabel }
 				disabled={ isGeneratingLabel || isContentTooShort }
 				isBusy={ isGeneratingLabel }
