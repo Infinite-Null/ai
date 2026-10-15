@@ -9,6 +9,7 @@
  * WordPress dependencies
  */
 import { createRoot, useEffect } from '@wordpress/element';
+import { __ } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
@@ -17,10 +18,9 @@ import RenameModalButton from './RenameModalButton';
 import { getSettings } from '../utils';
 
 /**
- * Selector for identifying candidate rename modal elements in the DOM.
+ * Selector for post rename modal in the editor action modal overlay.
  */
-const MODAL_SELECTOR =
-	'.editor-action-modal__rename-post, .components-modal__screen-overlay';
+const MODAL_SELECTOR = '.editor-action-modal__rename-post';
 
 export function RenameModalWrapper(): React.JSX.Element {
 	useEffect( () => {
@@ -87,10 +87,13 @@ export function RenameModalWrapper(): React.JSX.Element {
 							btn.classList.contains( 'is-tertiary' ) &&
 							btn.type !== 'submit'
 					) ||
-					buttons.find(
-						( btn ) =>
-							btn.textContent?.trim().toLowerCase() === 'cancel'
-					);
+					buttons.find( ( btn ) => {
+						const text = btn.textContent?.trim().toLowerCase();
+						// Use WordPress core's default text domain for matching the core Cancel button.
+						// eslint-disable-next-line @wordpress/i18n-text-domain
+						const coreCancel = __( 'Cancel' ).toLowerCase();
+						return text === coreCancel || text === 'cancel';
+					} );
 
 				if ( ! cancelButton || ! cancelButton.parentElement ) {
 					continue;
@@ -104,7 +107,6 @@ export function RenameModalWrapper(): React.JSX.Element {
 				container = document.createElement( 'div' );
 				container.className =
 					'ai-title-generation-rename-modal-wrapper';
-				container.style.display = 'contents';
 
 				cancelButton.parentElement.insertBefore(
 					container,
