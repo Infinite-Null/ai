@@ -7,7 +7,7 @@ import { registerPlugin } from '@wordpress/plugins';
  * Internal dependencies
  */
 import LabelGenerationListViewHeader from './components/LabelGenerationListViewHeader';
-import LabelGenerationBlockSettingsMenuItem from './components/LabelGenerationBlockSettingsMenuItem';
+import RenameModalWrapper from './components/RenameModalWrapper';
 import { useLabelGeneration } from './hooks/useLabelGeneration';
 import './index.scss';
 
@@ -19,9 +19,7 @@ function LabelGeneration() {
 			<LabelGenerationListViewHeader
 				labelGeneration={ labelGeneration }
 			/>
-			<LabelGenerationBlockSettingsMenuItem
-				labelGeneration={ labelGeneration }
-			/>
+			<RenameModalWrapper />
 		</>
 	);
 }

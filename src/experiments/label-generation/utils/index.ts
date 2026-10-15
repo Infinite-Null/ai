@@ -120,3 +120,26 @@ export function getBlockSubtreeContent( block: Block ): string {
 	);
 	return combineContent( [ getBlockText( block ), ...childParts ] );
 }
+
+/**
+ * Programmatically updates the value of a React-controlled input element
+ * and dispatches necessary events for React state listeners to pick up the change.
+ *
+ * @param {HTMLInputElement} input The input element to update.
+ * @param {string}           value The new string value.
+ */
+export function setInputValue( input: HTMLInputElement, value: string ): void {
+	const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+		window.HTMLInputElement.prototype,
+		'value'
+	)?.set;
+
+	if ( nativeInputValueSetter ) {
+		nativeInputValueSetter.call( input, value );
+	} else {
+		input.value = value;
+	}
+
+	input.dispatchEvent( new Event( 'input', { bubbles: true } ) );
+	input.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+}
