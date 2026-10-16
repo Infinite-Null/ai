@@ -48,7 +48,7 @@ module.exports = {
 		'experiments/abilities-explorer': path.resolve(
 			process.cwd(),
 			'src/experiments/abilities-explorer',
-			'index.js'
+			'index.tsx'
 		),
 		'experiments/content-resizing': path.resolve(
 			process.cwd(),
@@ -104,6 +104,11 @@ module.exports = {
 			process.cwd(),
 			'src/experiments/type-ahead',
 			'index.tsx'
+		),
+		'experiments/c2pa-monitor-grid': path.resolve(
+			process.cwd(),
+			'src/experiments/c2pa-monitor',
+			'grid.ts'
 		),
 		'experiments/comment-moderation': path.resolve(
 			process.cwd(),
