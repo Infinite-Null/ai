@@ -149,4 +149,18 @@ class Label_GenerationTest extends WP_UnitTestCase {
 		$data = (string) wp_scripts()->get_data( 'ai_label-generation', 'data' );
 		$this->assertStringContainsString( '"minContentLength":"75"', $data );
 	}
+
+	/**
+	 * Tests that enqueue_assets() does not enqueue assets on non-editor screens.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_enqueue_assets_bails_on_non_editor_screens() {
+		$experiment = new Label_Generation();
+		$experiment->enqueue_assets( 'edit.php' );
+
+		$this->assertFalse( wp_script_is( 'ai_label-generation', 'enqueued' ) );
+		$this->assertFalse( wp_style_is( 'ai_label-generation', 'enqueued' ) );
+	}
 }
+

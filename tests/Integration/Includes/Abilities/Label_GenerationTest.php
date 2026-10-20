@@ -530,4 +530,164 @@ class Label_GenerationTest extends WP_UnitTestCase {
 		$this->assertStringNotContainsString( '<script>', $result );
 		$this->assertStringContainsString( 'Pricing Table', $result );
 	}
+
+	/**
+	 * Test that get_prompt_builder() returns WP_Error when no valid text generation model is available.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_prompt_builder_returns_error_without_valid_model() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'get_prompt_builder' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke( $this->ability, '<content>Test prompt content</content>' );
+
+		if ( is_wp_error( $result ) ) {
+			$this->assertSame( 'unsupported_model', $result->get_error_code() );
+		} else {
+			$this->assertInstanceOf( \WP_AI_Client_Prompt_Builder::class, $result );
+		}
+	}
+
+	/**
+	 * Test that get_prompt_builder() returns prompt builder when model is supported.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_prompt_builder_returns_builder_when_supported() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'get_prompt_builder' );
+		$method->setAccessible( true );
+
+		$mock_builder = $this->getMockBuilder( \WP_AI_Client_Prompt_Builder::class )
+			->disableOriginalConstructor()
+			->addMethods( array( 'is_supported_for_text_generation' ) )
+			->getMock();
+
+		$mock_builder->method( 'is_supported_for_text_generation' )
+			->willReturn( true );
+
+		add_filter(
+			'wpai_label_generation_prompt_builder',
+			static function () use ( $mock_builder ) {
+				return $mock_builder;
+			}
+		);
+
+		$result = $method->invoke( $this->ability, '<content>Test prompt content</content>' );
+
+		remove_all_filters( 'wpai_label_generation_prompt_builder' );
+
+		$this->assertSame( $mock_builder, $result );
+	}
+
+	/**
+	 * Test that generate_label() returns generated label string on success.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_generate_label_success() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'generate_label' );
+		$method->setAccessible( true );
+
+		$mock_builder = $this->getMockBuilder( \WP_AI_Client_Prompt_Builder::class )
+			->disableOriginalConstructor()
+			->addMethods( array( 'is_supported_for_text_generation', 'generate_text' ) )
+			->getMock();
+
+		$mock_builder->method( 'is_supported_for_text_generation' )
+			->willReturn( true );
+
+		$mock_builder->expects( $this->once() )
+			->method( 'generate_text' )
+			->willReturn( 'Pricing Table' );
+
+		add_filter(
+			'wpai_label_generation_prompt_builder',
+			static function () use ( $mock_builder ) {
+				return $mock_builder;
+			}
+		);
+
+		$result = $method->invoke( $this->ability, '<content>Test prompt content</content>' );
+
+		remove_all_filters( 'wpai_label_generation_prompt_builder' );
+
+		$this->assertSame( 'Pricing Table', $result );
+	}
+
+	/**
+	 * Test that generate_label() returns error when prompt builder returns WP_Error.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_generate_label_returns_error_when_builder_errors() {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'generate_label' );
+		$method->setAccessible( true );
+
+		$mock_builder = $this->getMockBuilder( \WP_AI_Client_Prompt_Builder::class )
+			->disableOriginalConstructor()
+			->addMethods( array( 'is_supported_for_text_generation' ) )
+			->getMock();
+
+		$mock_builder->method( 'is_supported_for_text_generation' )
+			->willReturn( false );
+
+		add_filter(
+			'wpai_label_generation_prompt_builder',
+			static function () use ( $mock_builder ) {
+				return $mock_builder;
+			}
+		);
+
+		$result = $method->invoke( $this->ability, '<content>Test prompt content</content>' );
+
+		remove_all_filters( 'wpai_label_generation_prompt_builder' );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'unsupported_model', $result->get_error_code() );
+	}
+
+	/**
+	 * Test that execute_callback() works with the real ability instance when builder is mocked.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_execute_callback_with_real_ability_using_mock_builder() {
+		$mock_builder = $this->getMockBuilder( \WP_AI_Client_Prompt_Builder::class )
+			->disableOriginalConstructor()
+			->addMethods( array( 'is_supported_for_text_generation', 'generate_text' ) )
+			->getMock();
+
+		$mock_builder->method( 'is_supported_for_text_generation' )
+			->willReturn( true );
+
+		$mock_builder->expects( $this->once() )
+			->method( 'generate_text' )
+			->willReturn( 'Features Breakdown' );
+
+		add_filter(
+			'wpai_label_generation_prompt_builder',
+			static function () use ( $mock_builder ) {
+				return $mock_builder;
+			}
+		);
+
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'execute_callback' );
+		$method->setAccessible( true );
+
+		$result = $method->invoke(
+			$this->ability,
+			array( 'content' => 'Here is a comprehensive breakdown of our software features and capabilities.' )
+		);
+
+		remove_all_filters( 'wpai_label_generation_prompt_builder' );
+
+		$this->assertSame( 'Features Breakdown', $result );
+	}
 }
+
