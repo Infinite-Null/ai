@@ -1002,6 +1002,12 @@ function AISettingsPage() {
 							actions={
 								<>
 									<Link
+										href="https://learn.wordpress.org/course/ai-powered-wordpress/"
+										openInNewTab
+									>
+										{ __( 'Learn', 'ai' ) }
+									</Link>
+									<Link
 										href="https://github.com/WordPress/ai/tree/develop/docs"
 										openInNewTab
 									>
