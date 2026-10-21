@@ -186,17 +186,14 @@ export default function BlockContainerLabelGenerationListViewHeader() {
 
 	const buttonLabel = isGeneratingLabel
 		? sprintf(
-				/* translators: %1$d: number of blocks with labels generated, %2$d: total number of blocks */
+				/* translators: %1$d: number of blocks processed so far, %2$d: total number of blocks */
 				__( 'Generating labels… (%1$d/%2$d)', 'ai' ),
 				progress,
 				total
 		  )
 		: __( 'Generate Block Labels', 'ai' );
 
-	let buttonTitle: string = __(
-		'Generates concise labels for individual container blocks.',
-		'ai'
-	);
+	let buttonTitle: string | undefined;
 
 	if ( ! hasContainerBlocks ) {
 		buttonTitle = __(
@@ -228,7 +225,7 @@ export default function BlockContainerLabelGenerationListViewHeader() {
 				disabled={ isButtonDisabled }
 				isBusy={ isGeneratingLabel }
 				accessibleWhenDisabled
-				{ ...( ( ! hasContainerBlocks || isContentTooShort ) && {
+				{ ...( buttonTitle && {
 					label: buttonTitle,
 					showTooltip: true,
 				} ) }

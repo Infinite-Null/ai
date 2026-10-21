@@ -103,7 +103,8 @@ export function hasContainerBlocks( blocks: Block[] ): boolean {
  * Recursively collects readable content and eligible container blocks.
  *
  * Each returned candidate contains the combined content of the container and
- * all of its descendants. Candidates are returned in deepest-first order.
+ * all of its descendants. Candidates are returned in post-order: each
+ * container's descendants precede it, and siblings keep document order.
  *
  * @param blocks           Blocks to traverse.
  * @param minContentLength Minimum content length required for generation.
@@ -123,7 +124,7 @@ export function collectLabelCandidates(
 			minContentLength
 		);
 
-		// Add child candidates to the list of candidates, follow a bottom(leaf)-first order.
+		// Add child candidates before the current block so descendants precede their container.
 		candidates.push( ...childResult.candidates );
 
 		const blockContent = combineContent( [
