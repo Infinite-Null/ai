@@ -9,9 +9,8 @@
  * WordPress dependencies
  */
 import { createRoot, useEffect } from '@wordpress/element';
-import { select } from '@wordpress/data';
+import { select, subscribe } from '@wordpress/data';
 import { store as blockEditorStore } from '@wordpress/block-editor';
-import { store as blocksStore } from '@wordpress/blocks';
 
 /**
  * Internal dependencies
@@ -26,82 +25,67 @@ const MODAL_SELECTOR =
 	'.block-editor-block-rename-modal, .components-modal__screen-overlay.block-editor-block-rename-modal';
 
 /**
- * Global tracker for the last block interacted with in List View or canvas.
+ * Selector for a List View row, which carries its block's client ID in `data-block`.
  */
-let lastInteractedClientId: string | null = null;
+const LIST_VIEW_ROW_SELECTOR = '.block-editor-list-view-leaf[data-block]';
+
+/**
+ * Selector for UI the user passes through between a List View row and the
+ * Rename modal.
+ */
+const RENAME_FLOW_SELECTOR = `[role="menu"], ${ MODAL_SELECTOR }`;
+
+/**
+ * Client ID of the List View row the user last interacted with.
+ */
+let listViewTargetClientId: string | null = null;
 
 if ( typeof document !== 'undefined' ) {
-	const recordTargetBlock = ( event: Event ) => {
-		const target = event.target as HTMLElement | null;
-		const blockEl = target?.closest?.(
-			'.block-editor-list-view-leaf[data-block], [data-block]'
-		);
-		if ( blockEl ) {
-			const id = blockEl.getAttribute( 'data-block' );
-			if ( id ) {
-				lastInteractedClientId = id;
-			}
+	const trackListViewTarget = ( event: Event ) => {
+		const target = event.target as Element | null;
+		const row = target?.closest?.( LIST_VIEW_ROW_SELECTOR );
+
+		if ( row ) {
+			listViewTargetClientId = row.getAttribute( 'data-block' );
+		} else if ( ! target?.closest?.( RENAME_FLOW_SELECTOR ) ) {
+			listViewTargetClientId = null;
 		}
 	};
 
-	document.addEventListener( 'pointerdown', recordTargetBlock, true );
-	document.addEventListener( 'contextmenu', recordTargetBlock, true );
+	document.addEventListener( 'pointerdown', trackListViewTarget, true );
+	document.addEventListener( 'focusin', trackListViewTarget, true );
+
+	/*
+	 * Interactions inside the iframed editor canvas never reach this document,
+	 * so also drop the tracked row when the selection moves to another block.
+	 */
+	let lastSelectedClientId: string | null = null;
+	subscribe( () => {
+		const selectedClientId =
+			select( blockEditorStore ).getSelectedBlockClientId();
+
+		if ( selectedClientId === lastSelectedClientId ) {
+			return;
+		}
+
+		lastSelectedClientId = selectedClientId;
+
+		if ( selectedClientId !== listViewTargetClientId ) {
+			listViewTargetClientId = null;
+		}
+	}, blockEditorStore );
 }
 
 /**
- * Resolves the client ID of the block currently being edited in the Rename modal.
+ * Resolves the client ID of the block the Rename modal was opened for.
  *
- * @param {HTMLInputElement} [inputElement] The text input element inside the modal.
- * @return {string|null} The resolved block client ID, or null.
+ * @return The resolved block client ID, or null.
  */
-function resolveTargetClientId(
-	inputElement?: HTMLInputElement | null
-): string | null {
-	const blockEditor = select( blockEditorStore ) as any;
-	const blocks = select( blocksStore ) as any;
-
-	const candidateIds: string[] = [];
-
-	if ( lastInteractedClientId ) {
-		candidateIds.push( lastInteractedClientId );
-	}
-
-	const selectedId = blockEditor?.getSelectedBlockClientId?.();
-	if ( selectedId && ! candidateIds.includes( selectedId ) ) {
-		candidateIds.push( selectedId );
-	}
-
-	const selectedIds = blockEditor?.getSelectedBlockClientIds?.();
-	if ( Array.isArray( selectedIds ) ) {
-		for ( const id of selectedIds ) {
-			if ( ! candidateIds.includes( id ) ) {
-				candidateIds.push( id );
-			}
-		}
-	}
-
-	if ( ! inputElement || candidateIds.length <= 1 ) {
-		return candidateIds[ 0 ] ?? null;
-	}
-
-	const placeholder = inputElement.placeholder?.trim().toLowerCase();
-
-	// Prioritize candidate whose block title matches placeholder.
-	for ( const id of candidateIds ) {
-		const block = blockEditor?.getBlock?.( id );
-		if ( ! block ) {
-			continue;
-		}
-
-		const blockType = blocks?.getBlockType?.( block.name );
-		const blockTitle = blockType?.title?.trim().toLowerCase();
-
-		if ( placeholder && blockTitle === placeholder ) {
-			return id;
-		}
-	}
-
-	return candidateIds[ 0 ] ?? null;
+function resolveTargetClientId(): string | null {
+	return (
+		listViewTargetClientId ??
+		select( blockEditorStore ).getSelectedBlockClientId()
+	);
 }
 
 /**
@@ -187,7 +171,7 @@ export default function RenameModalWrapper(): React.JSX.Element {
 					'input.components-text-control__input, input[type="text"]'
 				);
 
-				const targetClientId = resolveTargetClientId( textInput );
+				const targetClientId = resolveTargetClientId();
 
 				// Insert our container immediately before the Cancel button.
 				container = document.createElement( 'div' );
