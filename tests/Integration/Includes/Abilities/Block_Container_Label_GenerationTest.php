@@ -532,13 +532,31 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 		$method     = $reflection->getMethod( 'get_prompt_builder' );
 		$method->setAccessible( true );
 
+		$mock_builder = $this->getMockBuilder( \WP_AI_Client_Prompt_Builder::class )
+			->disableOriginalConstructor()
+			->addMethods( array( 'is_supported_for_text_generation' ) )
+			->getMock();
+
+		$mock_builder->method( 'is_supported_for_text_generation' )
+			->willReturn( false );
+
+		add_filter(
+			'wpai_block_container_label_generation_prompt_builder',
+			static function () use ( $mock_builder ) {
+				return $mock_builder;
+			}
+		);
+
 		$result = $method->invoke( $this->ability, '<content>Test prompt content</content>' );
 
-		if ( is_wp_error( $result ) ) {
-			$this->assertSame( 'unsupported_model', $result->get_error_code() );
-		} else {
-			$this->assertInstanceOf( \WP_AI_Client_Prompt_Builder::class, $result );
-		}
+		remove_all_filters( 'wpai_block_container_label_generation_prompt_builder' );
+
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'unsupported_model', $result->get_error_code() );
+		$this->assertSame(
+			'Label generation failed. Please ensure you have a connected provider that supports text generation.',
+			$result->get_error_message()
+		);
 	}
 
 	/**
