@@ -189,8 +189,10 @@ class Block_Container_Label_Generation extends Abstract_Ability {
 			);
 		}
 
-		$prompt = sprintf( '<content>%s</content>', $content );
-		$result = $this->generate_label( $prompt );
+		// Escape angle brackets so content cannot break out of the <content> tag.
+		$escaped_content = str_replace( array( '<', '>' ), array( '&lt;', '&gt;' ), $content );
+		$prompt          = sprintf( '<content>%s</content>', $escaped_content );
+		$result          = $this->generate_label( $prompt );
 
 		if ( is_wp_error( $result ) ) {
 			return $result;

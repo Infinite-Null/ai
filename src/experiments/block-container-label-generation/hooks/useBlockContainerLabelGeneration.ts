@@ -16,7 +16,6 @@ import { ensureProvider } from '../../../utils/provider-status';
 import {
 	collectLabelCandidates,
 	generateLabel,
-	getBlockSubtreeContent,
 	getSettings,
 	hasContainerBlocks as checkHasContainerBlocks,
 } from '../utils';
@@ -33,7 +32,6 @@ export type UseBlockContainerLabelGenerationReturn = {
 	isContentTooShort: boolean;
 	hasContainerBlocks: boolean;
 	generate: () => void;
-	generateSingleBlock: ( clientId: string ) => Promise< void >;
 };
 
 export function useBlockContainerLabelGeneration(): UseBlockContainerLabelGenerationReturn {
@@ -191,64 +189,6 @@ export function useBlockContainerLabelGeneration(): UseBlockContainerLabelGenera
 		}
 	};
 
-	const generateSingleBlock = async ( clientId: string ) => {
-		noticeDispatch.removeNotice(
-			BLOCK_CONTAINER_LABEL_GENERATION_NOTICE_ID
-		);
-
-		if ( ! ensureProvider( BLOCK_CONTAINER_LABEL_GENERATION_NOTICE_ID ) ) {
-			return;
-		}
-
-		const targetBlock = select( blockEditorStore ).getBlock(
-			clientId
-		) as Block | null;
-
-		if ( ! targetBlock ) {
-			return;
-		}
-
-		const blockContent = getBlockSubtreeContent( targetBlock );
-		if ( ! hasMinimumContent( blockContent, minContentLength ) ) {
-			return;
-		}
-
-		setIsLoading( true );
-		setActiveClientId( clientId );
-
-		try {
-			const label = (
-				await generateLabel( blockContent, postId )
-			).trim();
-
-			if ( ! label ) {
-				return;
-			}
-
-			const latestBlock = select( blockEditorStore ).getBlock(
-				clientId
-			) as Block | null;
-
-			if ( ! latestBlock ) {
-				return;
-			}
-
-			blockEditorDispatch.updateBlockAttributes( clientId, {
-				metadata: {
-					...latestBlock.attributes.metadata,
-					name: label,
-				},
-			} );
-		} catch ( error ) {
-			noticeDispatch.createErrorNotice( getErrorMessage( error ), {
-				id: BLOCK_CONTAINER_LABEL_GENERATION_NOTICE_ID,
-			} );
-		} finally {
-			setIsLoading( false );
-			setActiveClientId( null );
-		}
-	};
-
 	return {
 		isLoading,
 		activeClientId,
@@ -258,6 +198,5 @@ export function useBlockContainerLabelGeneration(): UseBlockContainerLabelGenera
 		isContentTooShort,
 		hasContainerBlocks,
 		generate,
-		generateSingleBlock,
 	};
 }
