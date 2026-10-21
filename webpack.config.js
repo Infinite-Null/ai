@@ -160,9 +160,9 @@ module.exports = {
 			'src/experiments/content-translation',
 			'index.tsx'
 		),
-		'experiments/label-generation': path.resolve(
+		'experiments/block-container-label-generation': path.resolve(
 			process.cwd(),
-			'src/experiments/label-generation',
+			'src/experiments/block-container-label-generation',
 			'index.tsx'
 		),
 	},

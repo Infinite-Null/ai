@@ -12,18 +12,45 @@ import { store as editorStore } from '@wordpress/editor';
  * Internal dependencies
  */
 import {
-	useLabelGeneration,
-	type UseLabelGenerationReturn,
-} from '../hooks/useLabelGeneration';
+	useBlockContainerLabelGeneration,
+	type UseBlockContainerLabelGenerationReturn,
+} from '../hooks/useBlockContainerLabelGeneration';
 import { getSettings } from '../utils';
 
 const LIST_VIEW_CONTAINER_SELECTOR =
 	'.editor-list-view-sidebar__list-view-container';
 
-export default function LabelGenerationListViewHeader( {
+/**
+ * Retrieves the List View container element only when the List View tab (and not Outline) is active.
+ *
+ * @return The List View container element, or null if Outline or closed.
+ */
+const getListViewContainer = (): HTMLElement | null => {
+	// Locate list view panel or tree within the list view sidebar container.
+	const listViewContent = document.querySelector< HTMLElement >(
+		'.editor-list-view-sidebar__list-view-panel-content, .editor-list-view-sidebar .block-editor-list-view'
+	);
+	if ( listViewContent ) {
+		return listViewContent.closest< HTMLElement >(
+			LIST_VIEW_CONTAINER_SELECTOR
+		);
+	}
+
+	// Fallback: check if the container exists and does NOT contain document-outline.
+	const container = document.querySelector< HTMLElement >(
+		LIST_VIEW_CONTAINER_SELECTOR
+	);
+	if ( container && ! container.querySelector( '.document-outline' ) ) {
+		return container;
+	}
+
+	return null;
+};
+
+export default function BlockContainerLabelGenerationListViewHeader( {
 	labelGeneration: externalLabelGeneration,
 }: {
-	labelGeneration?: UseLabelGenerationReturn;
+	labelGeneration?: UseBlockContainerLabelGenerationReturn;
 } = {} ) {
 	const [ targetContainer, setTargetContainer ] =
 		useState< HTMLElement | null >( null );
@@ -35,7 +62,7 @@ export default function LabelGenerationListViewHeader( {
 		return editor?.isListViewOpened ? editor.isListViewOpened() : false;
 	}, [] );
 
-	const defaultLabelGeneration = useLabelGeneration();
+	const defaultLabelGeneration = useBlockContainerLabelGeneration();
 	const {
 		isLoading: isGeneratingLabel,
 		activeClientId,
@@ -43,6 +70,7 @@ export default function LabelGenerationListViewHeader( {
 		total,
 		minContentLength,
 		isContentTooShort,
+		hasContainerBlocks,
 		generate: generateLabel,
 	} = externalLabelGeneration ?? defaultLabelGeneration;
 
@@ -51,10 +79,12 @@ export default function LabelGenerationListViewHeader( {
 		if ( ! activeClientId ) {
 			document
 				.querySelectorAll< HTMLElement >(
-					'.ai-label-generation--is-generating'
+					'.ai-block-container-label-generation--is-generating'
 				)
 				.forEach( ( el ) => {
-					el.classList.remove( 'ai-label-generation--is-generating' );
+					el.classList.remove(
+						'ai-block-container-label-generation--is-generating'
+					);
 					el.removeAttribute( 'aria-busy' );
 					el.removeAttribute( 'aria-disabled' );
 					el.removeAttribute( 'inert' );
@@ -69,7 +99,9 @@ export default function LabelGenerationListViewHeader( {
 			`[data-block="${ activeClientId }"]`
 		);
 		if ( blockRow ) {
-			blockRow.classList.add( 'ai-label-generation--is-generating' );
+			blockRow.classList.add(
+				'ai-block-container-label-generation--is-generating'
+			);
 			blockRow.setAttribute( 'aria-busy', 'true' );
 			blockRow.setAttribute( 'aria-disabled', 'true' );
 			blockRow.setAttribute( 'inert', '' );
@@ -81,7 +113,7 @@ export default function LabelGenerationListViewHeader( {
 		return () => {
 			if ( blockRow ) {
 				blockRow.classList.remove(
-					'ai-label-generation--is-generating'
+					'ai-block-container-label-generation--is-generating'
 				);
 				blockRow.removeAttribute( 'aria-busy' );
 				blockRow.removeAttribute( 'aria-disabled' );
@@ -100,54 +132,59 @@ export default function LabelGenerationListViewHeader( {
 
 		let mountPoint: HTMLDivElement | null = null;
 
-		const findAndAttach = () => {
-			const container = document.querySelector< HTMLElement >(
-				LIST_VIEW_CONTAINER_SELECTOR
-			);
+		const syncAttachment = () => {
+			const container = getListViewContainer();
 
 			if ( ! container ) {
-				setTargetContainer( null );
-				return false;
-			}
-
-			// If we already have the mountPoint in this container, ensure it's still attached.
-			if ( mountPoint && container.contains( mountPoint ) ) {
-				return true;
-			}
-
-			mountPoint = document.createElement( 'div' );
-			mountPoint.className = 'ai-label-generation-list-view-header-mount';
-			container.prepend( mountPoint );
-			setTargetContainer( mountPoint );
-			return true;
-		};
-
-		// Attempt immediate attachment.
-		if ( ! findAndAttach() ) {
-			// If not yet available, observe DOM until the list view container mounts.
-			const observer = new MutationObserver( () => {
-				if ( findAndAttach() ) {
-					observer.disconnect();
-				}
-			} );
-
-			observer.observe( document.body, {
-				childList: true,
-				subtree: true,
-			} );
-
-			return () => {
-				observer.disconnect();
 				if ( mountPoint && mountPoint.parentNode ) {
 					mountPoint.parentNode.removeChild( mountPoint );
 				}
-			};
-		}
+				mountPoint = null;
+				setTargetContainer( null );
+				return;
+			}
 
-		return () => {
+			// If we already have the mountPoint in this container and attached in the DOM, keep it.
+			if (
+				mountPoint &&
+				container.contains( mountPoint ) &&
+				document.body.contains( mountPoint )
+			) {
+				return;
+			}
+
 			if ( mountPoint && mountPoint.parentNode ) {
 				mountPoint.parentNode.removeChild( mountPoint );
 			}
+
+			mountPoint = document.createElement( 'div' );
+			mountPoint.className =
+				'ai-block-container-label-generation-list-view-header-mount';
+			container.prepend( mountPoint );
+			setTargetContainer( mountPoint );
+		};
+
+		// Attempt immediate attachment.
+		syncAttachment();
+
+		// Observe DOM changes continuously so switching between List View and Outline
+		// or opening/closing the sidebar re-attaches the mount point seamlessly.
+		const observer = new MutationObserver( () => {
+			syncAttachment();
+		} );
+
+		observer.observe( document.body, {
+			childList: true,
+			subtree: true,
+		} );
+
+		return () => {
+			observer.disconnect();
+			if ( mountPoint && mountPoint.parentNode ) {
+				mountPoint.parentNode.removeChild( mountPoint );
+			}
+			mountPoint = null;
+			setTargetContainer( null );
 		};
 	}, [ isListViewOpened ] );
 
@@ -164,32 +201,42 @@ export default function LabelGenerationListViewHeader( {
 		  )
 		: __( 'Generate Block Labels', 'ai' );
 
-	const buttonTitle = isContentTooShort
-		? sprintf(
-				/* translators: %d: minimum number of characters required */
-				__(
-					'Block label generation will be available when the post content has at least %d characters.',
-					'ai'
-				),
-				minContentLength
-		  )
-		: __(
-				'Generates concise labels for individual container blocks.',
+	let buttonTitle: string = __(
+		'Generates concise labels for individual container blocks.',
+		'ai'
+	);
+
+	if ( ! hasContainerBlocks ) {
+		buttonTitle = __(
+			'No container blocks found to generate labels for.',
+			'ai'
+		);
+	} else if ( isContentTooShort ) {
+		buttonTitle = sprintf(
+			/* translators: %d: minimum number of characters required */
+			__(
+				'Block label generation will be available when the post content has at least %d characters.',
 				'ai'
-		  );
+			),
+			minContentLength
+		);
+	}
+
+	const isButtonDisabled =
+		isGeneratingLabel || ! hasContainerBlocks || isContentTooShort;
 
 	return createPortal(
-		<div className="ai-label-generation-list-view-header">
+		<div className="ai-block-container-label-generation-list-view-header">
 			<Button
 				icon={ <Icon icon={ pencil } aria-hidden="true" /> }
 				variant="secondary"
-				className="ai-label-generation-list-view-header__button"
+				className="ai-block-container-label-generation-list-view-header__button"
 				__next40pxDefaultSize
 				onClick={ generateLabel }
-				disabled={ isGeneratingLabel || isContentTooShort }
+				disabled={ isButtonDisabled }
 				isBusy={ isGeneratingLabel }
 				accessibleWhenDisabled
-				{ ...( isContentTooShort && {
+				{ ...( ( ! hasContainerBlocks || isContentTooShort ) && {
 					label: buttonTitle,
 					showTooltip: true,
 				} ) }

@@ -1,6 +1,6 @@
 <?php
 /**
- * Integration tests for the Label_Generation Ability class.
+ * Integration tests for the Block_Container_Label_Generation Ability class.
  *
  * @package WordPress\AI\Tests\Integration\Includes\Abilities
  */
@@ -9,20 +9,20 @@ namespace WordPress\AI\Tests\Integration\Includes\Abilities;
 
 use WP_Error;
 use WP_UnitTestCase;
-use WordPress\AI\Abilities\Label_Generation\Label_Generation;
+use WordPress\AI\Abilities\Block_Container_Label_Generation\Block_Container_Label_Generation;
 use WordPress\AI\Abstracts\Abstract_Feature;
 
 /**
- * Test experiment for Label_Generation Ability tests.
+ * Test experiment for Block_Container_Label_Generation Ability tests.
  *
  * @since x.x.x
  */
-class Test_Label_Generation_Experiment extends Abstract_Feature {
+class Test_Block_Container_Label_Generation_Experiment extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 */
 	public static function get_id(): string {
-		return 'label-generation';
+		return 'block-container-label-generation';
 	}
 
 	/**
@@ -30,7 +30,7 @@ class Test_Label_Generation_Experiment extends Abstract_Feature {
 	 */
 	protected function load_metadata(): array {
 		return array(
-			'label'       => 'Label Generation',
+			'label'       => 'Block Container Label Generation',
 			'description' => 'Generates concise labels for content blocks',
 		);
 	}
@@ -46,11 +46,11 @@ class Test_Label_Generation_Experiment extends Abstract_Feature {
 }
 
 /**
- * Testable subclass of Label_Generation to mock AI prompt generation.
+ * Testable subclass of Block_Container_Label_Generation to mock AI prompt generation.
  *
  * @since x.x.x
  */
-class Testable_Label_Generation extends Label_Generation {
+class Testable_Block_Container_Label_Generation extends Block_Container_Label_Generation {
 	/**
 	 * Mock response to return from generate_label().
 	 *
@@ -79,30 +79,30 @@ class Testable_Label_Generation extends Label_Generation {
 }
 
 /**
- * Label_Generation Ability test case.
+ * Block_Container_Label_Generation Ability test case.
  *
  * @since x.x.x
  */
-class Label_GenerationTest extends WP_UnitTestCase {
+class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 
 	/**
-	 * Label_Generation ability instance.
+	 * Block_Container_Label_Generation ability instance.
 	 *
-	 * @var \WordPress\AI\Abilities\Label_Generation\Label_Generation
+	 * @var \WordPress\AI\Abilities\Block_Container_Label_Generation\Block_Container_Label_Generation
 	 */
 	private $ability;
 
 	/**
-	 * Testable Label_Generation ability instance.
+	 * Testable Block_Container_Label_Generation ability instance.
 	 *
-	 * @var \WordPress\AI\Tests\Integration\Includes\Abilities\Testable_Label_Generation
+	 * @var \WordPress\AI\Tests\Integration\Includes\Abilities\Testable_Block_Container_Label_Generation
 	 */
 	private $testable_ability;
 
 	/**
 	 * Test experiment instance.
 	 *
-	 * @var \WordPress\AI\Tests\Integration\Includes\Abilities\Test_Label_Generation_Experiment
+	 * @var \WordPress\AI\Tests\Integration\Includes\Abilities\Test_Block_Container_Label_Generation_Experiment
 	 */
 	private $experiment;
 
@@ -114,16 +114,16 @@ class Label_GenerationTest extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
-		$this->experiment       = new Test_Label_Generation_Experiment();
-		$this->ability          = new Label_Generation(
-			'ai/label-generation',
+		$this->experiment       = new Test_Block_Container_Label_Generation_Experiment();
+		$this->ability          = new Block_Container_Label_Generation(
+			'ai/block-container-label-generation',
 			array(
 				'label'       => $this->experiment->get_label(),
 				'description' => $this->experiment->get_description(),
 			)
 		);
-		$this->testable_ability = new Testable_Label_Generation(
-			'ai/label-generation',
+		$this->testable_ability = new Testable_Block_Container_Label_Generation(
+			'ai/block-container-label-generation',
 			array(
 				'label'       => $this->experiment->get_label(),
 				'description' => $this->experiment->get_description(),
@@ -569,7 +569,7 @@ class Label_GenerationTest extends WP_UnitTestCase {
 			->willReturn( true );
 
 		add_filter(
-			'wpai_label_generation_prompt_builder',
+			'wpai_block_container_label_generation_prompt_builder',
 			static function () use ( $mock_builder ) {
 				return $mock_builder;
 			}
@@ -577,7 +577,7 @@ class Label_GenerationTest extends WP_UnitTestCase {
 
 		$result = $method->invoke( $this->ability, '<content>Test prompt content</content>' );
 
-		remove_all_filters( 'wpai_label_generation_prompt_builder' );
+		remove_all_filters( 'wpai_block_container_label_generation_prompt_builder' );
 
 		$this->assertSame( $mock_builder, $result );
 	}
@@ -605,7 +605,7 @@ class Label_GenerationTest extends WP_UnitTestCase {
 			->willReturn( 'Pricing Table' );
 
 		add_filter(
-			'wpai_label_generation_prompt_builder',
+			'wpai_block_container_label_generation_prompt_builder',
 			static function () use ( $mock_builder ) {
 				return $mock_builder;
 			}
@@ -613,7 +613,7 @@ class Label_GenerationTest extends WP_UnitTestCase {
 
 		$result = $method->invoke( $this->ability, '<content>Test prompt content</content>' );
 
-		remove_all_filters( 'wpai_label_generation_prompt_builder' );
+		remove_all_filters( 'wpai_block_container_label_generation_prompt_builder' );
 
 		$this->assertSame( 'Pricing Table', $result );
 	}
@@ -637,7 +637,7 @@ class Label_GenerationTest extends WP_UnitTestCase {
 			->willReturn( false );
 
 		add_filter(
-			'wpai_label_generation_prompt_builder',
+			'wpai_block_container_label_generation_prompt_builder',
 			static function () use ( $mock_builder ) {
 				return $mock_builder;
 			}
@@ -645,7 +645,7 @@ class Label_GenerationTest extends WP_UnitTestCase {
 
 		$result = $method->invoke( $this->ability, '<content>Test prompt content</content>' );
 
-		remove_all_filters( 'wpai_label_generation_prompt_builder' );
+		remove_all_filters( 'wpai_block_container_label_generation_prompt_builder' );
 
 		$this->assertInstanceOf( WP_Error::class, $result );
 		$this->assertSame( 'unsupported_model', $result->get_error_code() );
@@ -670,7 +670,7 @@ class Label_GenerationTest extends WP_UnitTestCase {
 			->willReturn( 'Features Breakdown' );
 
 		add_filter(
-			'wpai_label_generation_prompt_builder',
+			'wpai_block_container_label_generation_prompt_builder',
 			static function () use ( $mock_builder ) {
 				return $mock_builder;
 			}
@@ -685,7 +685,7 @@ class Label_GenerationTest extends WP_UnitTestCase {
 			array( 'content' => 'Here is a comprehensive breakdown of our software features and capabilities.' )
 		);
 
-		remove_all_filters( 'wpai_label_generation_prompt_builder' );
+		remove_all_filters( 'wpai_block_container_label_generation_prompt_builder' );
 
 		$this->assertSame( 'Features Breakdown', $result );
 	}

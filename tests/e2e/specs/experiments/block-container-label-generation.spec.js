@@ -42,16 +42,20 @@ async function insertGroupWithParagraph( editor, content ) {
 	await editor.saveDraft();
 }
 
-test.describe( 'Label Generation Experiment', () => {
+test.describe( 'Block Container Label Generation Experiment', () => {
 	test.beforeEach( async ( { requestUtils } ) => {
 		await seedCredentials( requestUtils );
 	} );
 
-	test( 'Can enable the label generation experiment', async ( {
+	test( 'Can enable the block container label generation experiment', async ( {
 		admin,
 		page,
 	} ) => {
-		await enableExperiment( admin, page, 'Label Generation' );
+		await enableExperiment(
+			admin,
+			page,
+			'Block Container Label Generation'
+		);
 	} );
 
 	test( 'Can generate block labels in List View for container blocks', async ( {
@@ -59,7 +63,11 @@ test.describe( 'Label Generation Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		await enableExperiment( admin, page, 'Label Generation' );
+		await enableExperiment(
+			admin,
+			page,
+			'Block Container Label Generation'
+		);
 
 		await admin.createNewPost();
 		await insertGroupWithParagraph( editor, LONG_TEXT );
@@ -68,7 +76,9 @@ test.describe( 'Label Generation Experiment', () => {
 		await openListView( page );
 
 		const generateButton = page
-			.locator( '.ai-label-generation-list-view-header__button' )
+			.locator(
+				'.ai-block-container-label-generation-list-view-header__button'
+			)
 			.filter( { hasText: 'Generate Block Labels' } );
 
 		await expect( generateButton ).toBeVisible();
@@ -90,7 +100,11 @@ test.describe( 'Label Generation Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		await enableExperiment( admin, page, 'Label Generation' );
+		await enableExperiment(
+			admin,
+			page,
+			'Block Container Label Generation'
+		);
 
 		await admin.createNewPost();
 		await insertGroupWithParagraph( editor, SHORT_TEXT );
@@ -99,7 +113,9 @@ test.describe( 'Label Generation Experiment', () => {
 		await openListView( page );
 
 		const generateButton = page
-			.locator( '.ai-label-generation-list-view-header__button' )
+			.locator(
+				'.ai-block-container-label-generation-list-view-header__button'
+			)
 			.filter( { hasText: 'Generate Block Labels' } );
 
 		await expect( generateButton ).toBeVisible();
@@ -111,7 +127,11 @@ test.describe( 'Label Generation Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		await enableExperiment( admin, page, 'Label Generation' );
+		await enableExperiment(
+			admin,
+			page,
+			'Block Container Label Generation'
+		);
 
 		await admin.createNewPost();
 		await insertGroupWithParagraph( editor, LONG_TEXT );
@@ -129,7 +149,7 @@ test.describe( 'Label Generation Experiment', () => {
 		await expect( modal ).toBeVisible();
 
 		const generateBtn = modal.locator(
-			'.ai-label-generation-rename-button'
+			'.ai-block-container-label-generation-rename-button'
 		);
 		await expect( generateBtn ).toBeVisible();
 		await expect( generateBtn ).toHaveText( 'Generate label' );
@@ -170,7 +190,11 @@ test.describe( 'Label Generation Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		await enableExperiment( admin, page, 'Label Generation' );
+		await enableExperiment(
+			admin,
+			page,
+			'Block Container Label Generation'
+		);
 
 		await admin.createNewPost();
 		await insertGroupWithParagraph( editor, SHORT_TEXT );
@@ -188,7 +212,7 @@ test.describe( 'Label Generation Experiment', () => {
 		await expect( modal ).toBeVisible();
 
 		const generateBtn = modal.locator(
-			'.ai-label-generation-rename-button'
+			'.ai-block-container-label-generation-rename-button'
 		);
 		await expect( generateBtn ).toBeVisible();
 		await expect( generateBtn ).toBeDisabled();
@@ -198,12 +222,16 @@ test.describe( 'Label Generation Experiment', () => {
 		await expect( modal ).not.toBeVisible();
 	} );
 
-	test( 'Ensure the Label Generation Experiment UI is not visible when the experiment is disabled', async ( {
+	test( 'Ensure the Block Container Label Generation Experiment UI is not visible when the experiment is disabled', async ( {
 		admin,
 		editor,
 		page,
 	} ) => {
-		await disableExperiment( admin, page, 'Label Generation' );
+		await disableExperiment(
+			admin,
+			page,
+			'Block Container Label Generation'
+		);
 
 		await admin.createNewPost();
 		await insertGroupWithParagraph( editor, LONG_TEXT );
@@ -211,7 +239,9 @@ test.describe( 'Label Generation Experiment', () => {
 		// Open List View and verify the header button is not visible.
 		await openListView( page );
 		await expect(
-			page.locator( '.ai-label-generation-list-view-header' )
+			page.locator(
+				'.ai-block-container-label-generation-list-view-header'
+			)
 		).not.toBeVisible();
 
 		// Select the container block and open the Rename modal.
@@ -226,7 +256,9 @@ test.describe( 'Label Generation Experiment', () => {
 
 		// The Generate label button must not be present in the Rename modal.
 		await expect(
-			modal.locator( '.ai-label-generation-rename-button' )
+			modal.locator(
+				'.ai-block-container-label-generation-rename-button'
+			)
 		).not.toBeVisible();
 
 		// Close the modal.

@@ -1,8 +1,8 @@
 <?php
 /**
- * System instruction for the Label Generation ability.
+ * System instruction for the Block Container Label Generation ability.
  *
- * @package WordPress\AI\Abilities\Label_Generation
+ * @package WordPress\AI\Abilities\Block_Container_Label_Generation
  */
 
 // Exit if accessed directly.

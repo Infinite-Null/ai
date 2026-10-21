@@ -24,7 +24,7 @@ import {
 	getSettings,
 	setInputValue,
 } from '../utils';
-import { LABEL_GENERATION_NOTICE_ID } from '../constants';
+import { BLOCK_CONTAINER_LABEL_GENERATION_NOTICE_ID } from '../constants';
 import type { Block } from '../types';
 
 interface RenameModalButtonProps {
@@ -116,12 +116,14 @@ export default function RenameModalButton( {
 			return;
 		}
 
-		if ( ! ensureProvider( LABEL_GENERATION_NOTICE_ID ) ) {
+		if ( ! ensureProvider( BLOCK_CONTAINER_LABEL_GENERATION_NOTICE_ID ) ) {
 			return;
 		}
 
 		setIsGenerating( true );
-		dispatch( noticesStore ).removeNotice( LABEL_GENERATION_NOTICE_ID );
+		dispatch( noticesStore ).removeNotice(
+			BLOCK_CONTAINER_LABEL_GENERATION_NOTICE_ID
+		);
 
 		try {
 			const result = (
@@ -153,7 +155,7 @@ export default function RenameModalButton( {
 					: error?.message ??
 					  __( 'Failed to generate block label.', 'ai' );
 			dispatch( noticesStore ).createErrorNotice( message, {
-				id: LABEL_GENERATION_NOTICE_ID,
+				id: BLOCK_CONTAINER_LABEL_GENERATION_NOTICE_ID,
 				isDismissible: true,
 			} );
 		} finally {
@@ -174,7 +176,7 @@ export default function RenameModalButton( {
 				showTooltip: true,
 			} ) }
 			__next40pxDefaultSize
-			className="ai-label-generation-rename-button"
+			className="ai-block-container-label-generation-rename-button"
 		>
 			{ buttonLabel }
 		</Button>

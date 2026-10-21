@@ -1,24 +1,24 @@
 <?php
 /**
- * Integration tests for the Label_Generation experiment class.
+ * Integration tests for the Block_Container_Label_Generation experiment class.
  *
  * @package WordPress\AI\Tests\Integration\Experiments
  */
 
-namespace WordPress\AI\Tests\Integration\Experiments\Label_Generation;
+namespace WordPress\AI\Tests\Integration\Experiments\Block_Container_Label_Generation;
 
 use WP_UnitTestCase;
 use WordPress\AI\Experiments\Experiment_Category;
-use WordPress\AI\Experiments\Label_Generation\Label_Generation;
+use WordPress\AI\Experiments\Block_Container_Label_Generation\Block_Container_Label_Generation;
 use WordPress\AI\Features\Loader;
 use WordPress\AI\Features\Registry;
 
 /**
- * Label_Generation test case.
+ * Block_Container_Label_Generation test case.
  *
  * @since x.x.x
  */
-class Label_GenerationTest extends WP_UnitTestCase {
+class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	/**
 	 * Set up test case.
 	 *
@@ -34,14 +34,14 @@ class Label_GenerationTest extends WP_UnitTestCase {
 		add_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 
 		// Enable the experiment.
-		update_option( 'wpai_feature_label-generation_enabled', true );
+		update_option( 'wpai_feature_block-container-label-generation_enabled', true );
 
 		$registry = new Registry();
 		$loader   = new Loader( $registry );
 		$loader->init();
 
-		$experiment = $registry->get_feature( 'label-generation' );
-		$this->assertInstanceOf( Label_Generation::class, $experiment, 'Label generation experiment should be registered in the registry.' );
+		$experiment = $registry->get_feature( 'block-container-label-generation' );
+		$this->assertInstanceOf( Block_Container_Label_Generation::class, $experiment, 'Block container label generation experiment should be registered in the registry.' );
 	}
 
 	/**
@@ -53,11 +53,11 @@ class Label_GenerationTest extends WP_UnitTestCase {
 		wp_set_current_user( 0 );
 		set_current_screen( 'front' );
 		unset( $GLOBALS['current_screen'] );
-		wp_dequeue_style( 'ai_label-generation' );
-		wp_deregister_style( 'ai_label-generation' );
-		wp_dequeue_script( 'ai_label-generation' );
-		wp_deregister_script( 'ai_label-generation' );
-		delete_option( 'wpai_feature_label-generation_enabled' );
+		wp_dequeue_style( 'ai_block-container-label-generation' );
+		wp_deregister_style( 'ai_block-container-label-generation' );
+		wp_dequeue_script( 'ai_block-container-label-generation' );
+		wp_deregister_script( 'ai_block-container-label-generation' );
+		delete_option( 'wpai_feature_block-container-label-generation_enabled' );
 		delete_option( 'wp_ai_client_provider_credentials' );
 		remove_filter( 'wpai_pre_has_valid_credentials_check', '__return_true' );
 		parent::tearDown();
@@ -69,10 +69,10 @@ class Label_GenerationTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_experiment_registration() {
-		$experiment = new Label_Generation();
+		$experiment = new Block_Container_Label_Generation();
 
-		$this->assertEquals( 'label-generation', $experiment->get_id() );
-		$this->assertEquals( 'Label Generation', $experiment->get_label() );
+		$this->assertEquals( 'block-container-label-generation', $experiment->get_id() );
+		$this->assertEquals( 'Block Container Label Generation', $experiment->get_label() );
 		$this->assertEquals( Experiment_Category::EDITOR, $experiment->get_category() );
 		$this->assertTrue( $experiment->is_enabled() );
 	}
@@ -85,16 +85,16 @@ class Label_GenerationTest extends WP_UnitTestCase {
 	public function test_register_ability() {
 		$this->setExpectedIncorrectUsage( 'WP_Abilities_Registry::register' );
 
-		$experiment = new Label_Generation();
+		$experiment = new Block_Container_Label_Generation();
 		$experiment->register();
 
 		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Abilities API hook.
 		do_action( 'wp_abilities_api_init' );
 
-		$this->assertTrue( function_exists( 'wp_has_ability' ) && wp_has_ability( 'ai/label-generation' ), 'Ability ai/label-generation should be registered.' );
-		$ability = wp_get_ability( 'ai/label-generation' );
+		$this->assertTrue( function_exists( 'wp_has_ability' ) && wp_has_ability( 'ai/block-container-label-generation' ), 'Ability ai/block-container-label-generation should be registered.' );
+		$ability = wp_get_ability( 'ai/block-container-label-generation' );
 		$this->assertNotNull( $ability, 'Ability should not be null.' );
-		$this->assertEquals( 'Label Generation', $ability->get_label() );
+		$this->assertEquals( 'Block Container Label Generation', $ability->get_label() );
 	}
 
 	/**
@@ -103,9 +103,9 @@ class Label_GenerationTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_experiment_not_enabled_when_individually_disabled() {
-		update_option( 'wpai_feature_label-generation_enabled', false );
+		update_option( 'wpai_feature_block-container-label-generation_enabled', false );
 
-		$experiment = new Label_Generation();
+		$experiment = new Block_Container_Label_Generation();
 
 		$this->assertFalse( $experiment->is_enabled(), 'Should not be enabled when feature toggle is off' );
 	}
@@ -118,11 +118,11 @@ class Label_GenerationTest extends WP_UnitTestCase {
 	public function test_enqueue_assets_localizes_default_min_content_length() {
 		set_current_screen( 'post' );
 
-		$experiment = new Label_Generation();
+		$experiment = new Block_Container_Label_Generation();
 		$experiment->enqueue_assets( 'post.php' );
 
-		$this->assertTrue( wp_script_is( 'ai_label-generation', 'enqueued' ) );
-		$data = (string) wp_scripts()->get_data( 'ai_label-generation', 'data' );
+		$this->assertTrue( wp_script_is( 'ai_block-container-label-generation', 'enqueued' ) );
+		$data = (string) wp_scripts()->get_data( 'ai_block-container-label-generation', 'data' );
 		$this->assertStringContainsString( '"minContentLength":"25"', $data );
 		$this->assertStringContainsString( '"enabled":"1"', $data );
 	}
@@ -141,12 +141,12 @@ class Label_GenerationTest extends WP_UnitTestCase {
 
 		add_filter( 'wpai_min_content_length', $filter );
 
-		$experiment = new Label_Generation();
+		$experiment = new Block_Container_Label_Generation();
 		$experiment->enqueue_assets( 'post.php' );
 
 		remove_filter( 'wpai_min_content_length', $filter );
 
-		$data = (string) wp_scripts()->get_data( 'ai_label-generation', 'data' );
+		$data = (string) wp_scripts()->get_data( 'ai_block-container-label-generation', 'data' );
 		$this->assertStringContainsString( '"minContentLength":"75"', $data );
 	}
 
@@ -156,11 +156,10 @@ class Label_GenerationTest extends WP_UnitTestCase {
 	 * @since x.x.x
 	 */
 	public function test_enqueue_assets_bails_on_non_editor_screens() {
-		$experiment = new Label_Generation();
+		$experiment = new Block_Container_Label_Generation();
 		$experiment->enqueue_assets( 'edit.php' );
 
-		$this->assertFalse( wp_script_is( 'ai_label-generation', 'enqueued' ) );
-		$this->assertFalse( wp_style_is( 'ai_label-generation', 'enqueued' ) );
+		$this->assertFalse( wp_script_is( 'ai_block-container-label-generation', 'enqueued' ) );
+		$this->assertFalse( wp_style_is( 'ai_block-container-label-generation', 'enqueued' ) );
 	}
 }
-

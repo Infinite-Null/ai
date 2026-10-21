@@ -4,23 +4,23 @@
 import { hasMinimumContent } from '../../../utils/character-count';
 import { getBlockText } from '../../../utils/blocks';
 import { runAbility } from '../../../utils/run-ability';
-import { LABEL_GENERATION_MINIMUM_CONTENT_LENGTH_DEFAULT } from '../constants';
-import type { AILabelGenerationData, Block } from '../types';
+import { BLOCK_CONTAINER_LABEL_GENERATION_MINIMUM_CONTENT_LENGTH_DEFAULT } from '../constants';
+import type { AIBlockContainerLabelGenerationData, Block } from '../types';
 
 /**
- * Retrieves the label generation settings from the global window object.
+ * Retrieves the block container label generation settings from the global window object.
  *
- * @return The label generation settings.
+ * @return The block container label generation settings.
  */
-export const getSettings = (): AILabelGenerationData => {
-	const settings: Partial< AILabelGenerationData > =
-		window?.aiLabelGenerationData ?? {};
+export const getSettings = (): AIBlockContainerLabelGenerationData => {
+	const settings: Partial< AIBlockContainerLabelGenerationData > =
+		window?.aiBlockContainerLabelGenerationData ?? {};
 
 	return {
 		enabled: settings.enabled ?? false,
 		minContentLength:
 			settings.minContentLength ??
-			LABEL_GENERATION_MINIMUM_CONTENT_LENGTH_DEFAULT,
+			BLOCK_CONTAINER_LABEL_GENERATION_MINIMUM_CONTENT_LENGTH_DEFAULT,
 	};
 };
 
@@ -35,7 +35,7 @@ export function generateLabel(
 	content: string,
 	postId: number
 ): Promise< string > {
-	return runAbility< string >( 'ai/label-generation', {
+	return runAbility< string >( 'ai/block-container-label-generation', {
 		content,
 		post_id: postId,
 	} );
@@ -49,6 +49,22 @@ export function generateLabel(
  */
 function combineContent( parts: string[] ): string {
 	return parts.filter( Boolean ).join( ' ' ).replace( /\s+/g, ' ' ).trim();
+}
+
+/**
+ * Recursively checks whether the given blocks contain at least one container block.
+ *
+ * A container block is defined as any block with inner blocks.
+ *
+ * @param blocks The array of blocks to check.
+ * @return True if at least one container block exists, false otherwise.
+ */
+export function hasContainerBlocks( blocks: Block[] ): boolean {
+	return blocks.some(
+		( block ) =>
+			( block.innerBlocks?.length ?? 0 ) > 0 ||
+			hasContainerBlocks( block.innerBlocks ?? [] )
+	);
 }
 
 /**

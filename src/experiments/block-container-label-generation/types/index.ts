@@ -1,11 +1,11 @@
-export type AILabelGenerationData = {
+export type AIBlockContainerLabelGenerationData = {
 	enabled: boolean;
 	minContentLength: number;
 };
 
 declare global {
 	interface Window {
-		aiLabelGenerationData: AILabelGenerationData;
+		aiBlockContainerLabelGenerationData: AIBlockContainerLabelGenerationData;
 	}
 }
 

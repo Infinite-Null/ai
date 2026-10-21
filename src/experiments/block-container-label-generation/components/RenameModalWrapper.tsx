@@ -155,7 +155,7 @@ export default function RenameModalWrapper(): React.JSX.Element {
 				// Check if already injected into this form.
 				if (
 					form.querySelector(
-						'.ai-label-generation-rename-modal-wrapper'
+						'.ai-block-container-label-generation-rename-modal-wrapper'
 					)
 				) {
 					isAttached = true;
@@ -192,7 +192,7 @@ export default function RenameModalWrapper(): React.JSX.Element {
 				// Insert our container immediately before the Cancel button.
 				container = document.createElement( 'div' );
 				container.className =
-					'ai-label-generation-rename-modal-wrapper';
+					'ai-block-container-label-generation-rename-modal-wrapper';
 				container.style.display = 'contents';
 
 				cancelButton.parentElement.insertBefore(

@@ -1,28 +1,28 @@
 <?php
 /**
- * Label generation WordPress Ability implementation.
+ * Block Container Label Generation WordPress Ability implementation.
  *
  * @package WordPress\AI
  */
 
 declare( strict_types=1 );
 
-namespace WordPress\AI\Abilities\Label_Generation;
+namespace WordPress\AI\Abilities\Block_Container_Label_Generation;
 
 use WP_Error;
 use WordPress\AI\Abstracts\Abstract_Ability;
-use WordPress\AI\Experiments\Label_Generation\Label_Generation as Label_Generation_Experiment;
+use WordPress\AI\Experiments\Block_Container_Label_Generation\Block_Container_Label_Generation as Block_Container_Label_Generation_Experiment;
 
 use function WordPress\AI\count_characters_excluding_spaces;
 use function WordPress\AI\get_min_content_length;
 use function WordPress\AI\normalize_content;
 
 /**
- * Label Generation WordPress Ability.
+ * Block Container Label Generation WordPress Ability.
  *
  * @since x.x.x
  */
-class Label_Generation extends Abstract_Ability {
+class Block_Container_Label_Generation extends Abstract_Ability {
 
 	/**
 	 * The default minimum content length in characters for the label generation.
@@ -124,7 +124,7 @@ class Label_Generation extends Abstract_Ability {
 	}
 
 	/**
-	 * Returns a prompt builder for content translation.
+	 * Returns a prompt builder for Block Container Label Generation.
 	 *
 	 * @since x.x.x
 	 *
@@ -141,7 +141,7 @@ class Label_Generation extends Abstract_Ability {
 
 		$prompt_builder = $this->filter_prompt_builder(
 			$prompt_builder,
-			Label_Generation_Experiment::class,
+			Block_Container_Label_Generation_Experiment::class,
 			array(),
 			$prompt
 		);
@@ -178,7 +178,7 @@ class Label_Generation extends Abstract_Ability {
 		}
 
 		$min_content_length = get_min_content_length(
-			'label-generation',
+			'block-container-label-generation',
 			self::DEFAULT_MIN_CONTENT_LENGTH
 		);
 

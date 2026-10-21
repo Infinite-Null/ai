@@ -1,15 +1,15 @@
 <?php
 /**
- * Label generation experiment class.
+ * Block Container Label Generation experiment class.
  *
  * @package WordPress\AI
  */
 
 declare( strict_types=1 );
 
-namespace WordPress\AI\Experiments\Label_Generation;
+namespace WordPress\AI\Experiments\Block_Container_Label_Generation;
 
-use WordPress\AI\Abilities\Label_Generation\Label_Generation as Label_Generation_Ability;
+use WordPress\AI\Abilities\Block_Container_Label_Generation\Block_Container_Label_Generation as Block_Container_Label_Generation_Ability;
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
@@ -22,11 +22,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Label generation experiment.
+ * Block Container Label Generation experiment.
  *
  * @since x.x.x
  */
-class Label_Generation extends Abstract_Feature {
+class Block_Container_Label_Generation extends Abstract_Feature {
 
 	/**
 	 * {@inheritDoc}
@@ -34,7 +34,7 @@ class Label_Generation extends Abstract_Feature {
 	 * @since x.x.x
 	 */
 	public static function get_id(): string {
-		return 'label-generation';
+		return 'block-container-label-generation';
 	}
 
 	/**
@@ -44,7 +44,7 @@ class Label_Generation extends Abstract_Feature {
 	 */
 	protected function load_metadata(): array {
 		return array(
-			'label'       => __( 'Label Generation', 'ai' ),
+			'label'       => __( 'Block Container Label Generation', 'ai' ),
 			'description' => __( 'Generate concise labels for content blocks. Requires an AI connector that includes support for text generation models.', 'ai' ),
 			'category'    => Experiment_Category::EDITOR,
 		);
@@ -71,7 +71,7 @@ class Label_Generation extends Abstract_Feature {
 			array(
 				'label'         => $this->get_label(),
 				'description'   => $this->get_description(),
-				'ability_class' => Label_Generation_Ability::class,
+				'ability_class' => Block_Container_Label_Generation_Ability::class,
 			)
 		);
 	}
@@ -90,26 +90,26 @@ class Label_Generation extends Abstract_Feature {
 		}
 
 		Asset_Loader::enqueue_script(
-			'label-generation',
-			'experiments/label-generation',
+			'block-container-label-generation',
+			'experiments/block-container-label-generation',
 			array(
 				'include_core_abilities' => true,
 			)
 		);
 
 		Asset_Loader::enqueue_style(
-			'label-generation',
-			'experiments/label-generation',
+			'block-container-label-generation',
+			'experiments/block-container-label-generation',
 		);
 
 		Asset_Loader::localize_script(
-			'label-generation',
-			'LabelGenerationData',
+			'block-container-label-generation',
+			'BlockContainerLabelGenerationData',
 			array(
 				'enabled'          => $this->is_enabled(),
 				'minContentLength' => get_min_content_length(
-					'label-generation',
-					Label_Generation_Ability::DEFAULT_MIN_CONTENT_LENGTH
+					'block-container-label-generation',
+					Block_Container_Label_Generation_Ability::DEFAULT_MIN_CONTENT_LENGTH
 				),
 			)
 		);

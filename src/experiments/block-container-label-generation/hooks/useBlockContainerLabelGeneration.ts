@@ -6,6 +6,7 @@ import { useSelect, useDispatch, select } from '@wordpress/data';
 import { store as editorStore } from '@wordpress/editor';
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import { store as noticesStore } from '@wordpress/notices';
+import { __, sprintf } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
@@ -17,23 +18,25 @@ import {
 	generateLabel,
 	getBlockSubtreeContent,
 	getSettings,
+	hasContainerBlocks as checkHasContainerBlocks,
 } from '../utils';
-import { LABEL_GENERATION_NOTICE_ID } from '../constants';
+import { BLOCK_CONTAINER_LABEL_GENERATION_NOTICE_ID } from '../constants';
 import { getErrorMessage } from '../../../utils/errors';
 import type { Block } from '../types';
 
-export type UseLabelGenerationReturn = {
+export type UseBlockContainerLabelGenerationReturn = {
 	isLoading: boolean;
 	activeClientId: string | null;
 	progress: number;
 	total: number;
 	minContentLength: number;
 	isContentTooShort: boolean;
+	hasContainerBlocks: boolean;
 	generate: () => void;
 	generateSingleBlock: ( clientId: string ) => Promise< void >;
 };
 
-export function useLabelGeneration(): UseLabelGenerationReturn {
+export function useBlockContainerLabelGeneration(): UseBlockContainerLabelGenerationReturn {
 	const [ isLoading, setIsLoading ] = useState( false );
 	const [ activeClientId, setActiveClientId ] = useState< string | null >(
 		null
@@ -49,10 +52,15 @@ export function useLabelGeneration(): UseLabelGenerationReturn {
 
 	const { minContentLength } = getSettings();
 
-	const { postId, content } = useSelect( ( sel ) => {
+	const { postId, content, hasContainerBlocks } = useSelect( ( sel ) => {
+		const editor = sel( editorStore );
+		const blockEditor = sel( blockEditorStore );
+		const blocks = ( blockEditor.getBlocks() ?? [] ) as Block[];
+
 		return {
-			postId: sel( editorStore ).getCurrentPostId() as number,
-			content: sel( editorStore ).getEditedPostContent(),
+			postId: editor.getCurrentPostId() as number,
+			content: editor.getEditedPostContent(),
+			hasContainerBlocks: checkHasContainerBlocks( blocks ),
 		};
 	}, [] );
 
@@ -61,14 +69,9 @@ export function useLabelGeneration(): UseLabelGenerationReturn {
 		minContentLength
 	);
 
-	const _recursivelyGenerateLabels = async (
-		blocks: Block[]
+	const _generateLabelsForCandidates = async (
+		candidates: { clientId: string; content: string }[]
 	): Promise< void > => {
-		const { candidates } = collectLabelCandidates(
-			blocks,
-			minContentLength
-		);
-
 		setTotal( candidates.length );
 		setProgress( 0 );
 
@@ -114,13 +117,38 @@ export function useLabelGeneration(): UseLabelGenerationReturn {
 
 	const generate = async () => {
 		// Remove any existing error notices.
-		noticeDispatch.removeNotice( LABEL_GENERATION_NOTICE_ID );
+		noticeDispatch.removeNotice(
+			BLOCK_CONTAINER_LABEL_GENERATION_NOTICE_ID
+		);
 
-		if ( ! ensureProvider( LABEL_GENERATION_NOTICE_ID ) ) {
+		if ( ! ensureProvider( BLOCK_CONTAINER_LABEL_GENERATION_NOTICE_ID ) ) {
+			return;
+		}
+
+		if ( ! hasContainerBlocks ) {
+			noticeDispatch.createErrorNotice(
+				__( 'No container blocks found to generate labels for.', 'ai' ),
+				{
+					id: BLOCK_CONTAINER_LABEL_GENERATION_NOTICE_ID,
+				}
+			);
 			return;
 		}
 
 		if ( isContentTooShort ) {
+			noticeDispatch.createErrorNotice(
+				sprintf(
+					/* translators: %d: minimum number of characters required */
+					__(
+						'Block label generation requires at least %d characters.',
+						'ai'
+					),
+					minContentLength
+				),
+				{
+					id: BLOCK_CONTAINER_LABEL_GENERATION_NOTICE_ID,
+				}
+			);
 			return;
 		}
 
@@ -130,12 +158,30 @@ export function useLabelGeneration(): UseLabelGenerationReturn {
 		setIsLoading( true );
 
 		try {
-			// Get all blocks and flatten the tree.
+			// Get all blocks and collect candidates.
 			const allBlocks = select( blockEditorStore ).getBlocks() as Block[];
-			await _recursivelyGenerateLabels( allBlocks );
+			const { candidates } = collectLabelCandidates(
+				allBlocks,
+				minContentLength
+			);
+
+			if ( candidates.length === 0 ) {
+				noticeDispatch.createInfoNotice(
+					__(
+						'All container blocks already have labels, or do not contain enough content.',
+						'ai'
+					),
+					{
+						id: BLOCK_CONTAINER_LABEL_GENERATION_NOTICE_ID,
+					}
+				);
+				return;
+			}
+
+			await _generateLabelsForCandidates( candidates );
 		} catch ( error ) {
 			noticeDispatch.createErrorNotice( getErrorMessage( error ), {
-				id: LABEL_GENERATION_NOTICE_ID,
+				id: BLOCK_CONTAINER_LABEL_GENERATION_NOTICE_ID,
 			} );
 		} finally {
 			setIsLoading( false );
@@ -146,9 +192,11 @@ export function useLabelGeneration(): UseLabelGenerationReturn {
 	};
 
 	const generateSingleBlock = async ( clientId: string ) => {
-		noticeDispatch.removeNotice( LABEL_GENERATION_NOTICE_ID );
+		noticeDispatch.removeNotice(
+			BLOCK_CONTAINER_LABEL_GENERATION_NOTICE_ID
+		);
 
-		if ( ! ensureProvider( LABEL_GENERATION_NOTICE_ID ) ) {
+		if ( ! ensureProvider( BLOCK_CONTAINER_LABEL_GENERATION_NOTICE_ID ) ) {
 			return;
 		}
 
@@ -193,7 +241,7 @@ export function useLabelGeneration(): UseLabelGenerationReturn {
 			} );
 		} catch ( error ) {
 			noticeDispatch.createErrorNotice( getErrorMessage( error ), {
-				id: LABEL_GENERATION_NOTICE_ID,
+				id: BLOCK_CONTAINER_LABEL_GENERATION_NOTICE_ID,
 			} );
 		} finally {
 			setIsLoading( false );
@@ -208,6 +256,7 @@ export function useLabelGeneration(): UseLabelGenerationReturn {
 		total,
 		minContentLength,
 		isContentTooShort,
+		hasContainerBlocks,
 		generate,
 		generateSingleBlock,
 	};
