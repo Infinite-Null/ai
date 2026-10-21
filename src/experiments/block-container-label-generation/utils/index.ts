@@ -1,4 +1,11 @@
 /**
+ * WordPress dependencies
+ */
+import { select } from '@wordpress/data';
+import { store as blockEditorStore } from '@wordpress/block-editor';
+import { hasBlockSupport } from '@wordpress/blocks';
+
+/**
  * Internal dependencies
  */
 import { hasMinimumContent } from '../../../utils/character-count';
@@ -52,17 +59,42 @@ function combineContent( parts: string[] ): string {
 }
 
 /**
- * Recursively checks whether the given blocks contain at least one container block.
+ * Checks whether a block is a container block the user is allowed to label.
  *
- * A container block is defined as any block with inner blocks.
+ * A container block is any block with inner blocks. Blocks that opt out of
+ * renaming and blocks that are not fully editable are present in the block
+ * tree but must not be labeled.
+ *
+ * @param block The block to check.
+ * @return True if the block is a labelable container block, false otherwise.
+ */
+function isLabelableContainer( block: Block ): boolean {
+	if ( ( block.innerBlocks?.length ?? 0 ) === 0 ) {
+		return false;
+	}
+
+	if ( ! hasBlockSupport( block.name, 'renaming', true ) ) {
+		return false;
+	}
+
+	// `getBlockEditingMode` is missing from the block editor store's type declarations.
+	const { getBlockEditingMode } = select( blockEditorStore ) as unknown as {
+		getBlockEditingMode: ( clientId: string ) => string;
+	};
+
+	return getBlockEditingMode( block.clientId ) === 'default';
+}
+
+/**
+ * Recursively checks whether the given blocks contain at least one labelable container block.
  *
  * @param blocks The array of blocks to check.
- * @return True if at least one container block exists, false otherwise.
+ * @return True if at least one labelable container block exists, false otherwise.
  */
 export function hasContainerBlocks( blocks: Block[] ): boolean {
 	return blocks.some(
 		( block ) =>
-			( block.innerBlocks?.length ?? 0 ) > 0 ||
+			isLabelableContainer( block ) ||
 			hasContainerBlocks( block.innerBlocks ?? [] )
 	);
 }
@@ -104,10 +136,9 @@ export function collectLabelCandidates(
 		}
 
 		const existingLabel = block.attributes?.metadata?.name?.trim();
-		const isContainer = block.innerBlocks.length > 0;
 
 		if (
-			isContainer &&
+			isLabelableContainer( block ) &&
 			! existingLabel &&
 			hasMinimumContent( blockContent, minContentLength )
 		) {
