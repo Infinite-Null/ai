@@ -31,7 +31,7 @@ export type UseBlockContainerLabelGenerationReturn = {
 	minContentLength: number;
 	isContentTooShort: boolean;
 	hasContainerBlocks: boolean;
-	generate: () => void;
+	generate: () => Promise< void >;
 };
 
 export function useBlockContainerLabelGeneration(): UseBlockContainerLabelGenerationReturn {

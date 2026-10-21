@@ -69,7 +69,7 @@ function combineContent( parts: string[] ): string {
  * @return True if the block is a labelable container block, false otherwise.
  */
 function isLabelableContainer( block: Block ): boolean {
-	if ( ( block.innerBlocks?.length ?? 0 ) === 0 ) {
+	if ( block.innerBlocks.length === 0 ) {
 		return false;
 	}
 
@@ -95,7 +95,7 @@ export function hasContainerBlocks( blocks: Block[] ): boolean {
 	return blocks.some(
 		( block ) =>
 			isLabelableContainer( block ) ||
-			hasContainerBlocks( block.innerBlocks ?? [] )
+			hasContainerBlocks( block.innerBlocks )
 	);
 }
 
@@ -162,7 +162,7 @@ export function collectLabelCandidates(
  * @return The combined text content.
  */
 export function getBlockSubtreeContent( block: Block ): string {
-	const childParts = ( block.innerBlocks ?? [] ).map( ( child ) =>
+	const childParts = block.innerBlocks.map( ( child ) =>
 		getBlockSubtreeContent( child )
 	);
 	return combineContent( [ getBlockText( block ), ...childParts ] );

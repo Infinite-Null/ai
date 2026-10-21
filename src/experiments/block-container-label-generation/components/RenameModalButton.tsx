@@ -18,6 +18,7 @@ import { store as noticesStore } from '@wordpress/notices';
  */
 import { ensureProvider } from '../../../utils/provider-status';
 import { hasMinimumContent } from '../../../utils/character-count';
+import { getErrorMessage } from '../../../utils/errors';
 import {
 	generateLabel,
 	getBlockSubtreeContent,
@@ -74,7 +75,7 @@ export default function RenameModalButton( {
 	}
 
 	// Only apply to container blocks (matching the bulk generator logic).
-	const isContainer = ( block.innerBlocks?.length ?? 0 ) > 0;
+	const isContainer = block.innerBlocks.length > 0;
 	if ( ! isContainer ) {
 		return null;
 	}
@@ -148,12 +149,11 @@ export default function RenameModalButton( {
 			}
 
 			setHasGenerated( true );
-		} catch ( error: any ) {
-			const message =
-				typeof error === 'string'
-					? error
-					: error?.message ??
-					  __( 'Failed to generate block label.', 'ai' );
+		} catch ( error ) {
+			const message = getErrorMessage(
+				error,
+				__( 'Failed to generate block label.', 'ai' )
+			);
 			dispatch( noticesStore ).createErrorNotice( message, {
 				id: BLOCK_CONTAINER_LABEL_GENERATION_NOTICE_ID,
 				isDismissible: true,

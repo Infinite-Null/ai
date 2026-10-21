@@ -1,3 +1,8 @@
+/**
+ * Internal dependencies
+ */
+import type { BlockWithClientId } from '../../../utils/blocks';
+
 export type AIBlockContainerLabelGenerationData = {
 	enabled: boolean;
 	minContentLength: number;
@@ -5,25 +10,16 @@ export type AIBlockContainerLabelGenerationData = {
 
 declare global {
 	interface Window {
-		aiBlockContainerLabelGenerationData: AIBlockContainerLabelGenerationData;
+		aiBlockContainerLabelGenerationData?: AIBlockContainerLabelGenerationData;
 	}
 }
 
-export interface BlockAttributes {
-	content?: string;
-	value?: string;
-	alt?: string;
-	caption?: string;
-	metadata?: {
-		name?: string;
-		[ key: string ]: unknown;
+export interface Block extends BlockWithClientId {
+	attributes: BlockWithClientId[ 'attributes' ] & {
+		metadata?: {
+			name?: string;
+			[ key: string ]: unknown;
+		};
 	};
-	[ key: string ]: unknown;
-}
-
-export interface Block {
-	clientId: string;
-	name: string;
-	attributes: BlockAttributes;
 	innerBlocks: Block[];
 }
