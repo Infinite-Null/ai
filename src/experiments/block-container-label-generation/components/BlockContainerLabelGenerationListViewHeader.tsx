@@ -23,25 +23,19 @@ const LIST_VIEW_CONTAINER_SELECTOR =
  * @return The List View container element, or null if Outline or closed.
  */
 const getListViewContainer = (): HTMLElement | null => {
-	// Locate list view panel or tree within the list view sidebar container.
+	/*
+	 * The List View and Outline tabs share the container class, so identify the
+	 * List View tab by content that only it renders.
+	 */
 	const listViewContent = document.querySelector< HTMLElement >(
 		'.editor-list-view-sidebar__list-view-panel-content, .editor-list-view-sidebar .block-editor-list-view'
 	);
-	if ( listViewContent ) {
-		return listViewContent.closest< HTMLElement >(
+
+	return (
+		listViewContent?.closest< HTMLElement >(
 			LIST_VIEW_CONTAINER_SELECTOR
-		);
-	}
-
-	// Fallback: check if the container exists and does NOT contain document-outline.
-	const container = document.querySelector< HTMLElement >(
-		LIST_VIEW_CONTAINER_SELECTOR
+		) ?? null
 	);
-	if ( container && ! container.querySelector( '.document-outline' ) ) {
-		return container;
-	}
-
-	return null;
 };
 
 export default function BlockContainerLabelGenerationListViewHeader() {
