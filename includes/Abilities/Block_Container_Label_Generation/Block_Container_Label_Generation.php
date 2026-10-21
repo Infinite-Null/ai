@@ -1,6 +1,6 @@
 <?php
 /**
- * Block Container Label Generation WordPress Ability implementation.
+ * Block Container Label Generation WordPress Ability implementation
  *
  * @package WordPress\AI
  */
