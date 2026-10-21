@@ -187,6 +187,9 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 
 		$this->assertIsArray( $schema, 'Input schema should be an array' );
 		$this->assertEquals( 'object', $schema['type'], 'Schema type should be object' );
+		$this->assertArrayHasKey( 'required', $schema, 'Schema should have required' );
+		$this->assertContains( 'post_id', $schema['required'], 'Schema required should contain post_id' );
+		$this->assertContains( 'content', $schema['required'], 'Schema required should contain content' );
 		$this->assertArrayHasKey( 'properties', $schema, 'Schema should have properties' );
 		$this->assertArrayHasKey( 'post_id', $schema['properties'], 'Schema should have post_id property' );
 		$this->assertArrayHasKey( 'content', $schema['properties'], 'Schema should have content property' );
@@ -233,11 +236,11 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that permission_callback() returns true for user with edit_posts capability when no post_id is provided.
+	 * Test that permission_callback() returns error when post_id is missing.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_permission_callback_with_edit_posts_capability() {
+	public function test_permission_callback_without_post_id() {
 		$reflection = new \ReflectionClass( $this->ability );
 		$method     = $reflection->getMethod( 'permission_callback' );
 		$method->setAccessible( true );
@@ -247,26 +250,8 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 
 		$result = $method->invoke( $this->ability, array() );
 
-		$this->assertTrue( $result, 'Permission should be granted for user with edit_posts capability' );
-	}
-
-	/**
-	 * Test that permission_callback() returns error for user without edit_posts capability.
-	 *
-	 * @since x.x.x
-	 */
-	public function test_permission_callback_without_edit_posts_capability() {
-		$reflection = new \ReflectionClass( $this->ability );
-		$method     = $reflection->getMethod( 'permission_callback' );
-		$method->setAccessible( true );
-
-		$user_id = $this->factory->user->create( array( 'role' => 'subscriber' ) );
-		wp_set_current_user( $user_id );
-
-		$result = $method->invoke( $this->ability, array() );
-
 		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
-		$this->assertEquals( 'insufficient_permissions', $result->get_error_code() );
+		$this->assertEquals( 'missing_post_id', $result->get_error_code() );
 	}
 
 	/**
@@ -279,9 +264,16 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 		$method     = $reflection->getMethod( 'permission_callback' );
 		$method->setAccessible( true );
 
+		$post_id = $this->factory->post->create(
+			array(
+				'post_content' => 'Test content',
+				'post_status'  => 'publish',
+			)
+		);
+
 		wp_set_current_user( 0 );
 
-		$result = $method->invoke( $this->ability, array() );
+		$result = $method->invoke( $this->ability, array( 'post_id' => $post_id ) );
 
 		$this->assertInstanceOf( WP_Error::class, $result, 'Result should be WP_Error' );
 		$this->assertEquals( 'insufficient_permissions', $result->get_error_code() );
@@ -513,7 +505,7 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that execute_callback() sanitizes HTML tags from the AI response.
+	 * Test that execute_callback() sanitizes HTML tags and quotes from the AI response.
 	 *
 	 * @since x.x.x
 	 */
@@ -522,13 +514,12 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 		$method     = $reflection->getMethod( 'execute_callback' );
 		$method->setAccessible( true );
 
-		$this->testable_ability->mock_response = '<script>alert("xss")</script>Pricing Table';
+		$this->testable_ability->mock_response = '"<strong>Pricing Table</strong>"';
 
 		$input  = array( 'content' => 'This section lists our product pricing, monthly tiers, and discount details.' );
 		$result = $method->invoke( $this->testable_ability, $input );
 
-		$this->assertStringNotContainsString( '<script>', $result );
-		$this->assertStringContainsString( 'Pricing Table', $result );
+		$this->assertEquals( 'Pricing Table', $result );
 	}
 
 	/**

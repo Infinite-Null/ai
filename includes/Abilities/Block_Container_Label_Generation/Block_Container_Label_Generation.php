@@ -25,7 +25,7 @@ use function WordPress\AI\normalize_content;
 class Block_Container_Label_Generation extends Abstract_Ability {
 
 	/**
-	 * The default minimum content length in characters for the label generation.
+	 * The default minimum content length in characters for the block container label generation.
 	 *
 	 * @since x.x.x
 	 *
@@ -52,15 +52,16 @@ class Block_Container_Label_Generation extends Abstract_Ability {
 	protected function input_schema(): array {
 		return array(
 			'type'       => 'object',
+			'required'   => array( 'post_id', 'content' ),
 			'properties' => array(
 				'post_id' => array(
 					'type'              => 'integer',
 					'sanitize_callback' => 'absint',
-					'description'       => esc_html__( 'The ID of the post to generate a label for.', 'ai' ),
+					'description'       => esc_html__( 'The ID of the post that contains the block to generate a label for.', 'ai' ),
 				),
 				'content' => array(
 					'type'        => 'string',
-					'description' => esc_html__( 'The block content to generate a label for.', 'ai' ),
+					'description' => esc_html__( 'The content of the block to generate a label for.', 'ai' ),
 				),
 			),
 		);
@@ -74,7 +75,7 @@ class Block_Container_Label_Generation extends Abstract_Ability {
 	protected function output_schema(): array {
 		return array(
 			'type'        => 'string',
-			'description' => esc_html__( 'The generated label for the post.', 'ai' ),
+			'description' => esc_html__( 'The generated label for the block.', 'ai' ),
 		);
 	}
 
@@ -84,43 +85,38 @@ class Block_Container_Label_Generation extends Abstract_Ability {
 	 * @since x.x.x
 	 */
 	protected function permission_callback( $args ) {
-		// Ensure the user has the perimssion to edit the post if a post ID is provided.
-		if ( isset( $args['post_id'] ) ) {
-			$post_id = absint( $args['post_id'] );
-			$post    = get_post( $post_id );
-
-			if ( ! $post ) {
-				return new WP_Error(
-					'post_not_found',
-					sprintf(
-						/* translators: %d: post ID */
-						esc_html__( 'Post with ID %d not found.', 'ai' ),
-						$post_id
-					)
-				);
-			}
-
-			if ( ! current_user_can( 'edit_post', $post_id ) ) {
-				return new WP_Error(
-					'insufficient_permissions',
-					esc_html__( 'You do not have permission to edit this post.', 'ai' )
-				);
-			}
-
-			// Ensure the post type is allowed in REST endpoints.
-			$post_type = get_post_type_object( $post->post_type );
-
-			if ( ! $post_type || empty( $post_type->show_in_rest ) ) {
-				return false;
-			}
-		} elseif ( ! current_user_can( 'edit_posts' ) ) {
+		if ( empty( $args['post_id'] ) ) {
 			return new WP_Error(
-				'insufficient_permissions',
-				esc_html__( 'You do not have permission to edit posts.', 'ai' )
+				'missing_post_id',
+				esc_html__( 'A post ID is required to generate a block container label.', 'ai' )
 			);
 		}
 
-		return true;
+		$post_id = absint( $args['post_id'] );
+		$post    = get_post( $post_id );
+
+		if ( ! $post ) {
+			return new WP_Error(
+				'post_not_found',
+				sprintf(
+					/* translators: %d: post ID */
+					esc_html__( 'Post with ID %d not found.', 'ai' ),
+					$post_id
+				)
+			);
+		}
+
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
+			return new WP_Error(
+				'insufficient_permissions',
+				esc_html__( 'You do not have permission to edit this post.', 'ai' )
+			);
+		}
+
+		// Ensure the post type is allowed in REST endpoints.
+		$post_type = get_post_type_object( $post->post_type );
+
+		return $post_type && ! empty( $post_type->show_in_rest );
 	}
 
 	/**
@@ -207,7 +203,7 @@ class Block_Container_Label_Generation extends Abstract_Ability {
 			);
 		}
 
-		return wp_kses_post( $result );
+		return sanitize_text_field( trim( $result, " \t\n\r\0\x0B\"'" ) );
 	}
 
 	/**
@@ -215,7 +211,7 @@ class Block_Container_Label_Generation extends Abstract_Ability {
 	 *
 	 * @since x.x.x
 	 *
-	 * @param string $prompt The prompt to use for the label generation.
+	 * @param string $prompt The prompt to use for the block container label generation.
 	 * @return string|\WP_Error The generated label, or a WP_Error if there was an error.
 	 */
 	protected function generate_label( string $prompt ) {

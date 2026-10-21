@@ -33,15 +33,16 @@ When enabled, the experiment provides two primary entry points in the Block Edit
 ```php
 array(
     'type'       => 'object',
+    'required'   => array( 'post_id', 'content' ),
     'properties' => array(
         'post_id' => array(
             'type'              => 'integer',
             'sanitize_callback' => 'absint',
-            'description'       => 'The ID of the post to generate a label for.',
+            'description'       => 'The ID of the post that contains the block to generate a label for.',
         ),
         'content' => array(
             'type'        => 'string',
-            'description' => 'The block content to generate a label for.',
+            'description' => 'The content of the block to generate a label for.',
         ),
     ),
 )
@@ -52,7 +53,7 @@ array(
 ```php
 array(
     'type'        => 'string',
-    'description' => 'The generated label for the post.',
+    'description' => 'The generated label for the block.',
 )
 ```
 
@@ -60,12 +61,9 @@ array(
 
 The ability's `permission_callback()` verifies:
 
-- **When `post_id` is supplied:**
-  - Verifies the post exists; returns `post_not_found` otherwise.
-  - Verifies `current_user_can( 'edit_post', $post_id )`; returns `insufficient_permissions` otherwise.
-  - Verifies the post's post type has `show_in_rest` enabled; returns `false` otherwise.
-- **When `post_id` is omitted:**
-  - Verifies `current_user_can( 'edit_posts' )`; returns `insufficient_permissions` otherwise.
+- Verifies that `post_id` is supplied; returns `missing_post_id` otherwise.
+- Verifies the post exists; returns `post_not_found` otherwise.
+- Verifies `current_user_can( 'edit_post', $post_id )`; returns `insufficient_permissions` otherwise.
 
 ## Using the Ability via REST API
 
