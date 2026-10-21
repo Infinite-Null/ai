@@ -11,10 +11,7 @@ import { store as editorStore } from '@wordpress/editor';
 /**
  * Internal dependencies
  */
-import {
-	useBlockContainerLabelGeneration,
-	type UseBlockContainerLabelGenerationReturn,
-} from '../hooks/useBlockContainerLabelGeneration';
+import { useBlockContainerLabelGeneration } from '../hooks/useBlockContainerLabelGeneration';
 import { getSettings } from '../utils';
 
 const LIST_VIEW_CONTAINER_SELECTOR =
@@ -47,11 +44,7 @@ const getListViewContainer = (): HTMLElement | null => {
 	return null;
 };
 
-export default function BlockContainerLabelGenerationListViewHeader( {
-	labelGeneration: externalLabelGeneration,
-}: {
-	labelGeneration?: UseBlockContainerLabelGenerationReturn;
-} = {} ) {
+export default function BlockContainerLabelGenerationListViewHeader() {
 	const [ targetContainer, setTargetContainer ] =
 		useState< HTMLElement | null >( null );
 
@@ -62,7 +55,6 @@ export default function BlockContainerLabelGenerationListViewHeader( {
 		return editor?.isListViewOpened ? editor.isListViewOpened() : false;
 	}, [] );
 
-	const defaultLabelGeneration = useBlockContainerLabelGeneration();
 	const {
 		isLoading: isGeneratingLabel,
 		activeClientId,
@@ -72,7 +64,7 @@ export default function BlockContainerLabelGenerationListViewHeader( {
 		isContentTooShort,
 		hasContainerBlocks,
 		generate: generateLabel,
-	} = externalLabelGeneration ?? defaultLabelGeneration;
+	} = useBlockContainerLabelGeneration();
 
 	// Visual and physical disable on the block currently being processed in List View.
 	useEffect( () => {
