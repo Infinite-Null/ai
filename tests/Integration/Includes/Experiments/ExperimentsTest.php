@@ -14,6 +14,7 @@ use WordPress\AI\Experiments\Comment_Moderation\Comment_Moderation;
 use WordPress\AI\Experiments\Block_Container_Label_Generation\Block_Container_Label_Generation;
 use WordPress\AI\Experiments\Suggest_Reply\Suggest_Reply;
 use WordPress\AI\Experiments\Experiments;
+use WordPress\AI\Experiments\MCP_Adapter\MCP_Adapter;
 use WordPress\AI\Experiments\Type_Ahead\Type_Ahead;
 
 /**
@@ -45,5 +46,6 @@ class ExperimentsTest extends WP_UnitTestCase {
 		$this->assertContains( Comment_Moderation::class, $results, 'Comment_Moderation should be registered as a default experiment.' );
 		$this->assertContains( Suggest_Reply::class, $results, 'Suggest_Reply should be registered as a default experiment.' );
 		$this->assertContains( Block_Container_Label_Generation::class, $results, 'Block_Container_Label_Generation should be registered as a default experiment.' );
+		$this->assertContains( MCP_Adapter::class, $results, 'MCP_Adapter should be registered as a default experiment.' );
 	}
 }
