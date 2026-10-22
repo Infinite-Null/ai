@@ -54,14 +54,18 @@ class Block_Container_Label_Generation extends Abstract_Ability {
 			'type'       => 'object',
 			'required'   => array( 'post_id', 'content' ),
 			'properties' => array(
-				'post_id' => array(
+				'post_id'          => array(
 					'type'              => 'integer',
 					'sanitize_callback' => 'absint',
 					'description'       => esc_html__( 'The ID of the post that contains the block to generate a label for.', 'ai' ),
 				),
-				'content' => array(
+				'content'          => array(
 					'type'        => 'string',
 					'description' => esc_html__( 'The content of the block to generate a label for.', 'ai' ),
+				),
+				'document_context' => array(
+					'type'        => 'string',
+					'description' => esc_html__( 'The outline or contextual overview of the entire document to provide structural context.', 'ai' ),
 				),
 			),
 		);
@@ -160,8 +164,9 @@ class Block_Container_Label_Generation extends Abstract_Ability {
 		$args = wp_parse_args(
 			$input,
 			array(
-				'post_id' => null,
-				'content' => null,
+				'post_id'          => null,
+				'content'          => null,
+				'document_context' => null,
 			)
 		);
 
@@ -189,10 +194,26 @@ class Block_Container_Label_Generation extends Abstract_Ability {
 			);
 		}
 
-		// Escape angle brackets so content cannot break out of the <content> tag.
+		$post_id          = absint( $args['post_id'] );
+		$document_context = ! empty( $args['document_context'] )
+			? normalize_content( (string) $args['document_context'] )
+			: $this->get_fallback_document_context( $post_id );
+
+		// Escape angle brackets so content cannot break out of the tags.
 		$escaped_content = str_replace( array( '<', '>' ), array( '&lt;', '&gt;' ), $content );
-		$prompt          = sprintf( '<content>%s</content>', $escaped_content );
-		$result          = $this->generate_label( $prompt );
+
+		if ( ! empty( $document_context ) ) {
+			$escaped_context = str_replace( array( '<', '>' ), array( '&lt;', '&gt;' ), $document_context );
+			$prompt          = sprintf(
+				"<document-context>\n%s\n</document-context>\n<content>%s</content>",
+				$escaped_context,
+				$escaped_content
+			);
+		} else {
+			$prompt = sprintf( '<content>%s</content>', $escaped_content );
+		}
+
+		$result = $this->generate_label( $prompt );
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
@@ -225,5 +246,51 @@ class Block_Container_Label_Generation extends Abstract_Ability {
 		}
 
 		return $builder->generate_text();
+	}
+
+	/**
+	 * Builds fallback document context from the post title and content if not provided.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param int $post_id The post ID.
+	 * @return string The fallback document context.
+	 */
+	private function get_fallback_document_context( int $post_id ): string {
+		$post = get_post( $post_id );
+		if ( ! $post ) {
+			return '';
+		}
+
+		$lines = array();
+		if ( ! empty( $post->post_title ) ) {
+			$lines[] = 'Title: ' . $post->post_title;
+		}
+
+		if ( ! empty( $post->post_content ) && function_exists( 'parse_blocks' ) ) {
+			$blocks        = parse_blocks( $post->post_content );
+			$section_index = 1;
+
+			foreach ( $blocks as $block ) {
+				if ( empty( $block['innerBlocks'] ) ) {
+					continue;
+				}
+
+				$text = wp_strip_all_tags( render_block( $block ) );
+				$text = normalize_content( $text );
+				if ( empty( $text ) ) {
+					continue;
+				}
+
+				$lines[] = sprintf(
+					'Section %d: %s',
+					$section_index,
+					wp_html_excerpt( $text, 120, '…' )
+				);
+				++$section_index;
+			}
+		}
+
+		return implode( "\n", $lines );
 	}
 }
