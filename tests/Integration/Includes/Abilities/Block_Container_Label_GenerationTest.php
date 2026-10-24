@@ -494,11 +494,11 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that execute_callback() uses fallback document context when document_context is omitted.
+	 * Test that execute_callback() omits document-context tag when document_context is not provided.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_execute_callback_with_fallback_document_context() {
+	public function test_execute_callback_without_document_context() {
 		$reflection = new \ReflectionClass( $this->testable_ability );
 		$method     = $reflection->getMethod( 'execute_callback' );
 		$method->setAccessible( true );
@@ -520,9 +520,8 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 		$result = $method->invoke( $this->testable_ability, $input );
 
 		$this->assertEquals( 'Hero Section', $result );
-		$this->assertStringContainsString( '<document-context>', $this->testable_ability->last_prompt );
-		$this->assertStringContainsString( 'Title: Sample Landing Page', $this->testable_ability->last_prompt );
-		$this->assertStringContainsString( 'Section 1: Introduction and hero text', $this->testable_ability->last_prompt );
+		$this->assertStringNotContainsString( '<document-context>', $this->testable_ability->last_prompt );
+		$this->assertStringContainsString( '<content>Introduction and hero text for the page.</content>', $this->testable_ability->last_prompt );
 	}
 
 	/**
