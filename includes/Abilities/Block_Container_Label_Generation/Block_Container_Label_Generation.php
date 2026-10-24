@@ -195,7 +195,7 @@ class Block_Container_Label_Generation extends Abstract_Ability {
 		}
 
 		$document_context = ! empty( $args['document_context'] )
-			? normalize_content( (string) $args['document_context'] )
+			? trim( (string) $args['document_context'] )
 			: '';
 
 		// Escape angle brackets so content cannot break out of the tags.
