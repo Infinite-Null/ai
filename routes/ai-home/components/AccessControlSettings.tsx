@@ -261,7 +261,7 @@ export function AccessControlSettings( {
 											'ai'
 									  )
 									: __(
-											'Standard WordPress capabilities determine access.',
+											'Default permissions determine who can use this feature.',
 											'ai'
 									  )
 							}
