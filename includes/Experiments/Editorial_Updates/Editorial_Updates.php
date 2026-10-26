@@ -55,7 +55,6 @@ class Editorial_Updates extends Abstract_Feature {
 	 * @since 0.8.0
 	 */
 	protected function register_feature(): void {
-		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ) );
 	}
 

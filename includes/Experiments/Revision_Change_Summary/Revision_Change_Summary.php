@@ -50,8 +50,7 @@ class Revision_Change_Summary extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 */
-	public function register(): void {
-		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
+	protected function register_feature(): void {
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'maybe_enqueue_classic_assets' ) );
 	}

@@ -48,7 +48,7 @@ abstract class Abstract_Ability extends WP_Ability {
 				'input_schema'        => $this->input_schema(),
 				'output_schema'       => $this->output_schema(),
 				'execute_callback'    => array( $this, 'execute_callback' ),
-				'permission_callback' => array( $this, 'permission_callback' ),
+				'permission_callback' => array( $this, 'check_access_and_permissions' ),
 				'meta'                => array_replace_recursive(
 					$this->meta(),
 					isset( $properties['meta'] ) && is_array( $properties['meta'] ) ? $properties['meta'] : array()
@@ -105,6 +105,51 @@ abstract class Abstract_Ability extends WP_Ability {
 	 * @return bool|\WP_Error True if the user has permission, WP_Error otherwise.
 	 */
 	abstract protected function permission_callback( $input );
+
+	/**
+	 * Returns the feature ID associated with this ability for access control checks.
+	 *
+	 * Defaults to extracting the feature ID from the ability name if it starts with 'ai/'.
+	 * Subclasses can override to return a specific feature ID or null if access control does not apply.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return string|null The feature ID, or null if no feature access control applies.
+	 */
+	protected function get_feature_id(): ?string {
+		if ( 0 === strpos( $this->name, 'ai/' ) ) {
+			return substr( $this->name, 3 );
+		}
+
+		return null;
+	}
+
+	/**
+	 * Checks feature access control before delegating to permission_callback.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $input The input arguments to the ability.
+	 * @return bool|\WP_Error True if the user has permission, WP_Error otherwise.
+	 */
+	public function check_access_and_permissions( $input ) {
+		if ( defined( 'WP_CLI' ) && WP_CLI ) {
+			return $this->permission_callback( $input );
+		}
+
+		$feature_id = $this->get_feature_id();
+		if ( null !== $feature_id && ! \WordPress\AI\current_user_can_access_feature( $feature_id ) ) {
+			$status = function_exists( 'rest_authorization_required_code' ) ? rest_authorization_required_code() : 403;
+
+			return new WP_Error(
+				'feature_access_denied',
+				__( 'You do not have permission to access this feature.', 'ai' ),
+				array( 'status' => $status )
+			);
+		}
+
+		return $this->permission_callback( $input );
+	}
 
 	/**
 	 * Returns the meta of the ability.

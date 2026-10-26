@@ -323,9 +323,6 @@ class Comment_Moderation extends Abstract_Feature {
 	 * @since 0.9.0
 	 */
 	protected function register_feature(): void {
-		// Register abilities.
-		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
-
 		// Add columns to comments list table.
 		add_filter( 'manage_edit-comments_columns', array( $this, 'add_columns' ) );
 		add_action( 'manage_comments_custom_column', array( $this, 'render_column' ), 10, 2 );

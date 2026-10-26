@@ -393,10 +393,24 @@ abstract class Abstract_Feature implements Feature {
 	}
 
 	/**
+	 * Registers abilities associated with this feature.
+	 *
+	 * Subclasses can override this method to register their abilities.
+	 * Hooked to `wp_abilities_api_init` automatically on all requests.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return void
+	 */
+	public function register_abilities(): void {
+		// Default implementation is a no-op.
+	}
+
+	/**
 	 * Registers user-facing feature hooks and functionality.
 	 *
-	 * Subclasses should override this method to register abilities,
-	 * scripts, UI elements, and actions that require user access.
+	 * Subclasses should override this method to register scripts, UI elements,
+	 * and actions that require user access in the admin.
 	 *
 	 * @since x.x.x
 	 *
@@ -409,13 +423,14 @@ abstract class Abstract_Feature implements Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * Runs infrastructure setup for all users, then registers feature
-	 * hooks if the current user has access to this feature.
+	 * Runs infrastructure setup and hooks abilities for all requests, then
+	 * registers user-facing feature hooks if the current user has access.
 	 *
 	 * @since 0.6.0
 	 */
 	public function register(): void {
 		$this->register_infrastructure();
+		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 
 		if ( ! $this->current_user_can_access() ) {
 			return;

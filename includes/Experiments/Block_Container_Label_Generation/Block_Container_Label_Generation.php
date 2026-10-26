@@ -56,7 +56,6 @@ class Block_Container_Label_Generation extends Abstract_Feature {
 	 * @since x.x.x
 	 */
 	protected function register_feature(): void {
-		add_action( 'wp_abilities_api_init', array( $this, 'register_ability' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 	}
 
@@ -65,7 +64,7 @@ class Block_Container_Label_Generation extends Abstract_Feature {
 	 *
 	 * @since x.x.x
 	 */
-	public function register_ability(): void {
+	public function register_abilities(): void {
 		wp_register_ability(
 			sprintf( 'ai/%s', $this->get_id() ),
 			array(
@@ -74,6 +73,15 @@ class Block_Container_Label_Generation extends Abstract_Feature {
 				'ability_class' => Block_Container_Label_Generation_Ability::class,
 			)
 		);
+	}
+
+	/**
+	 * Backward compatibility alias for register_abilities().
+	 *
+	 * @since x.x.x
+	 */
+	public function register_ability(): void {
+		$this->register_abilities();
 	}
 
 	/**
