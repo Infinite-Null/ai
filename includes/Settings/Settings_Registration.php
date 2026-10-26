@@ -204,6 +204,17 @@ class Settings_Registration {
 
 			register_setting(
 				self::ACCESS_CONTROL_OPTION_GROUP,
+				"wpai_feature_{$feature_id}_access_control_enabled",
+				array(
+					'type'              => 'boolean',
+					'default'           => false,
+					'sanitize_callback' => 'rest_sanitize_boolean',
+					'show_in_rest'      => true,
+				)
+			);
+
+			register_setting(
+				self::ACCESS_CONTROL_OPTION_GROUP,
 				"wpai_feature_{$feature_id}_roles",
 				array(
 					'type'              => 'array',

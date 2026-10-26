@@ -8,6 +8,7 @@ import {
 	FlexItem,
 	FormTokenField,
 	Spinner,
+	ToggleControl,
 } from '@wordpress/components';
 import { useCallback, useEffect, useMemo, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
@@ -58,14 +59,46 @@ export function AccessControlSettings( {
 	const { settings, stage, save, isDirty, isSaving } =
 		useAccessControlSettings( featureId );
 
+	const [ localEnabled, setLocalEnabled ] = useState< boolean | null >(
+		null
+	);
 	const [ localRoles, setLocalRoles ] = useState< string[] | null >( null );
 	const [ selectedUserMap, setSelectedUserMap ] = useState<
 		Map< number, string >
 	>( new Map() );
 	const [ localUsers, setLocalUsers ] = useState< number[] | null >( null );
 
-	const effectiveRoles = localRoles ?? settings.roles;
+	const effectiveEnabled = localEnabled ?? settings.enabled;
+	const effectiveRoles = useMemo(
+		() =>
+			localRoles ??
+			( settings.roles.length > 0
+				? settings.roles
+				: [ 'administrator', 'editor' ] ),
+		[ localRoles, settings.roles ]
+	);
 	const effectiveUsers = localUsers ?? settings.users;
+
+	const handleToggleEnabled = useCallback(
+		( enabled: boolean ) => {
+			setLocalEnabled( enabled );
+			let newRoles = effectiveRoles;
+			if (
+				enabled &&
+				newRoles.length === 0 &&
+				effectiveUsers.length === 0
+			) {
+				newRoles = [ 'administrator', 'editor' ];
+				setLocalRoles( newRoles );
+			}
+			stage( {
+				enabled,
+				roles: newRoles,
+				users: effectiveUsers,
+			} );
+		},
+		[ stage, effectiveRoles, effectiveUsers ]
+	);
 
 	const suggestionTokenToId = useMemo( () => {
 		const map = new Map< string, number >();
@@ -107,9 +140,13 @@ export function AccessControlSettings( {
 				? [ ...effectiveRoles, roleId ]
 				: effectiveRoles.filter( ( r ) => r !== roleId );
 			setLocalRoles( newRoles );
-			stage( { roles: newRoles, users: effectiveUsers } );
+			stage( {
+				enabled: effectiveEnabled,
+				roles: newRoles,
+				users: effectiveUsers,
+			} );
 		},
-		[ stage, effectiveRoles, effectiveUsers ]
+		[ stage, effectiveEnabled, effectiveRoles, effectiveUsers ]
 	);
 
 	const handleUsersChange = useCallback(
@@ -172,10 +209,21 @@ export function AccessControlSettings( {
 
 			setLocalUsers( newUsers );
 			setSelectedUserMap( newMap );
-			stage( { roles: effectiveRoles, users: newUsers } );
+			stage( {
+				enabled: effectiveEnabled,
+				roles: effectiveRoles,
+				users: newUsers,
+			} );
 			search( '' );
 		},
-		[ stage, effectiveRoles, suggestionTokenToId, selectedUserMap, search ]
+		[
+			stage,
+			effectiveEnabled,
+			effectiveRoles,
+			suggestionTokenToId,
+			selectedUserMap,
+			search,
+		]
 	);
 
 	const handleInputChange = useCallback(
@@ -187,6 +235,7 @@ export function AccessControlSettings( {
 
 	const handleSave = useCallback( async () => {
 		await save();
+		setLocalEnabled( null );
 		setLocalRoles( null );
 		setLocalUsers( null );
 	}, [ save ] );
@@ -202,56 +251,91 @@ export function AccessControlSettings( {
 			{ ! isLoading && ! fetchError && (
 				<Flex gap={ 4 } direction="column">
 					<FlexItem>
-						<fieldset className="ai-access-control-mode-fields__fieldset">
-							<legend className="ai-access-control-mode-fields__legend">
-								{ __( 'Roles', 'ai' ) }
-							</legend>
-							<div className="ai-access-control-mode-fields__roles-grid">
-								{ roles.map( ( role ) => (
-									<CheckboxControl
-										key={ role.id }
-										label={ role.name }
-										checked={ effectiveRoles.includes(
-											role.id
-										) }
-										onChange={ ( checked ) =>
-											handleRoleToggle( role.id, checked )
-										}
-									/>
-								) ) }
-							</div>
-						</fieldset>
-					</FlexItem>
-					<FlexItem>
-						<Flex className="ai-access-control-mode-fields__user-search-wrapper">
-							<div className="ai-access-control-mode-fields__user-search-input">
-								<FormTokenField
-									label={ __( 'Users', 'ai' ) }
-									value={ selectedUsersTokens }
-									suggestions={ userSuggestionNames }
-									onChange={ handleUsersChange }
-									onInputChange={ handleInputChange }
-									__experimentalExpandOnFocus
-									__experimentalShowHowTo={ false }
-									__next40pxDefaultSize
-									messages={ {
-										added: __( 'User added.', 'ai' ),
-										removed: __( 'User removed.', 'ai' ),
-										remove: __( 'Remove user', 'ai' ),
-										__experimentalInvalid: __(
-											'No matching user found.',
+						<ToggleControl
+							__nextHasNoMarginBottom
+							label={ __( 'Enable access control', 'ai' ) }
+							help={
+								effectiveEnabled
+									? __(
+											'Only selected roles and users can access this feature.',
 											'ai'
-										),
-									} }
-								/>
-							</div>
-							{ isSearching && (
-								<div className="ai-access-control-mode-fields__user-search-spinner">
-									<Spinner />
-								</div>
-							) }
-						</Flex>
+									  )
+									: __(
+											'Standard WordPress capabilities determine access.',
+											'ai'
+									  )
+							}
+							checked={ effectiveEnabled }
+							onChange={ handleToggleEnabled }
+						/>
 					</FlexItem>
+					{ effectiveEnabled && (
+						<>
+							<FlexItem>
+								<fieldset className="ai-access-control-mode-fields__fieldset">
+									<legend className="ai-access-control-mode-fields__legend">
+										{ __( 'Roles', 'ai' ) }
+									</legend>
+									<div className="ai-access-control-mode-fields__roles-grid">
+										{ roles.map( ( role ) => (
+											<CheckboxControl
+												key={ role.id }
+												label={ role.name }
+												checked={ effectiveRoles.includes(
+													role.id
+												) }
+												onChange={ ( checked ) =>
+													handleRoleToggle(
+														role.id,
+														checked
+													)
+												}
+											/>
+										) ) }
+									</div>
+								</fieldset>
+							</FlexItem>
+							<FlexItem>
+								<Flex className="ai-access-control-mode-fields__user-search-wrapper">
+									<div className="ai-access-control-mode-fields__user-search-input">
+										<FormTokenField
+											label={ __( 'Users', 'ai' ) }
+											value={ selectedUsersTokens }
+											suggestions={ userSuggestionNames }
+											onChange={ handleUsersChange }
+											onInputChange={ handleInputChange }
+											__experimentalExpandOnFocus
+											__experimentalShowHowTo={ false }
+											__next40pxDefaultSize
+											messages={ {
+												added: __(
+													'User added.',
+													'ai'
+												),
+												removed: __(
+													'User removed.',
+													'ai'
+												),
+												remove: __(
+													'Remove user',
+													'ai'
+												),
+												__experimentalInvalid: __(
+													'No matching user found.',
+													'ai'
+												),
+											} }
+										/>
+									</div>
+									{ isSearching && (
+										<div className="ai-access-control-mode-fields__user-search-spinner">
+											<Spinner />
+										</div>
+									) }
+								</Flex>
+							</FlexItem>
+						</>
+					) }
 					{ isDirty && (
 						<FlexItem>
 							<Button

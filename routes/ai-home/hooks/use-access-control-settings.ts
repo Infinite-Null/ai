@@ -8,6 +8,7 @@ import { __ } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 
 interface AccessControlSettings {
+	enabled: boolean;
 	roles: string[];
 	users: number[];
 }
@@ -21,7 +22,11 @@ interface UseAccessControlSettingsReturn {
 	isSaving: boolean;
 }
 
-const EMPTY_SETTINGS: AccessControlSettings = { roles: [], users: [] };
+const EMPTY_SETTINGS: AccessControlSettings = {
+	enabled: false,
+	roles: [],
+	users: [],
+};
 
 /**
  * Reads and writes the access control settings for a specific feature.
@@ -32,6 +37,7 @@ const EMPTY_SETTINGS: AccessControlSettings = { roles: [], users: [] };
 export function useAccessControlSettings(
 	featureId: string
 ): UseAccessControlSettingsReturn {
+	const enabledKey = `wpai_feature_${ featureId }_access_control_enabled`;
 	const rolesKey = `wpai_feature_${ featureId }_roles`;
 	const usersKey = `wpai_feature_${ featureId }_users`;
 
@@ -61,28 +67,34 @@ export function useAccessControlSettings(
 	const { createErrorNotice, createSuccessNotice } =
 		useDispatch( noticesStore );
 
+	const rawEnabled = editedRecord?.[ enabledKey ];
 	const rawRoles = editedRecord?.[ rolesKey ];
 	const rawUsers = editedRecord?.[ usersKey ];
 
 	const settings: AccessControlSettings = {
+		enabled: typeof rawEnabled === 'boolean' ? rawEnabled : false,
 		roles: Array.isArray( rawRoles ) ? rawRoles.map( String ) : [],
 		users: Array.isArray( rawUsers ) ? rawUsers.map( Number ) : [],
 	};
 
 	const isDirty = useMemo(
-		() => rolesKey in nonTransientEdits || usersKey in nonTransientEdits,
-		[ rolesKey, usersKey, nonTransientEdits ]
+		() =>
+			enabledKey in nonTransientEdits ||
+			rolesKey in nonTransientEdits ||
+			usersKey in nonTransientEdits,
+		[ enabledKey, rolesKey, usersKey, nonTransientEdits ]
 	);
 
 	const stage = useCallback(
 		( next: AccessControlSettings ) => {
 			// @ts-expect-error -- core-data types don't expose editEntityRecord for 'root'/'site' args.
 			editEntityRecord( 'root', 'site', undefined, {
+				[ enabledKey ]: next.enabled,
 				[ rolesKey ]: next.roles,
 				[ usersKey ]: next.users,
 			} );
 		},
-		[ rolesKey, usersKey, editEntityRecord ]
+		[ enabledKey, rolesKey, usersKey, editEntityRecord ]
 	);
 
 	const save = useCallback( async () => {
@@ -91,7 +103,7 @@ export function useAccessControlSettings(
 				'root',
 				'site',
 				undefined,
-				[ rolesKey, usersKey ],
+				[ enabledKey, rolesKey, usersKey ],
 				{ throwOnError: true }
 			);
 			createSuccessNotice( __( 'Access control settings saved.', 'ai' ), {
@@ -104,6 +116,7 @@ export function useAccessControlSettings(
 			);
 		}
 	}, [
+		enabledKey,
 		rolesKey,
 		usersKey,
 		saveSpecifiedEdits,
