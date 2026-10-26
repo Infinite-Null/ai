@@ -1032,10 +1032,12 @@ function current_user_can_access_feature( string $feature_id ): bool {
 		$has_access = true;
 	} elseif ( in_array( $current_user->ID, array_map( 'intval', $users ), true ) ) {
 		$has_access = true;
+	} elseif ( array_intersect( $current_user->roles, $roles ) ) {
+		$has_access = true;
 	} elseif ( array_intersect( $current_user->roles, array( 'subscriber', 'contributor' ) ) ) {
 		$has_access = false;
 	} else {
-		$has_access = (bool) array_intersect( $current_user->roles, $roles );
+		$has_access = false;
 	}
 
 	/**
