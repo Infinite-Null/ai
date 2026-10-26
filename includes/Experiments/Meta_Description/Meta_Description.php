@@ -52,7 +52,7 @@ class Meta_Description extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 0.7.0
+	 * @since x.x.x
 	 */
 	protected function register_feature(): void {
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );

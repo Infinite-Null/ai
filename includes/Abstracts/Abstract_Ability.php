@@ -15,6 +15,7 @@ use WP_Error;
 
 use WordPress\AiClient\AiClient;
 
+use function WordPress\AI\current_user_can_access_feature;
 use function WordPress\AI\format_guidelines_for_prompt;
 use function WordPress\AI\get_feature_developer_model_config;
 use function WordPress\AI\get_preferred_models_for_text_generation;
@@ -138,7 +139,7 @@ abstract class Abstract_Ability extends WP_Ability {
 		}
 
 		$feature_id = $this->get_feature_id();
-		if ( null !== $feature_id && ! \WordPress\AI\current_user_can_access_feature( $feature_id ) ) {
+		if ( null !== $feature_id && ! current_user_can_access_feature( $feature_id ) ) {
 			$status = function_exists( 'rest_authorization_required_code' ) ? rest_authorization_required_code() : 403;
 
 			return new WP_Error(

@@ -52,7 +52,7 @@ class Editorial_Updates extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 0.8.0
+	 * @since x.x.x
 	 */
 	protected function register_feature(): void {
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ) );

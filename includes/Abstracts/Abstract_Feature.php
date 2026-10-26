@@ -13,6 +13,8 @@ use InvalidArgumentException;
 use WordPress\AI\Contracts\Feature;
 use WordPress\AI\Features\Feature_Category;
 
+use function WordPress\AI\current_user_can_access_feature;
+
 /**
  * Base implementation for features.
  *
@@ -123,6 +125,21 @@ abstract class Abstract_Feature implements Feature {
 		$this->stability   = $metadata['stability'] ?? 'experimental';
 		$this->image       = $metadata['image'] ?? '';
 		$this->capability  = $metadata['capability'] ?? 'text_generation';
+
+		if ( ! $this->supports_access_control() ) {
+			return;
+		}
+
+		$reflector = new \ReflectionMethod( $this, 'register' );
+		if ( $reflector->getDeclaringClass()->getName() === self::class ) {
+			return;
+		}
+
+		_doing_it_wrong(
+			static::class . '::register',
+			esc_html__( 'Features should override register_feature() and register_abilities() instead of register() to support user access control.', 'ai' ),
+			'x.x.x'
+		);
 	}
 
 	/**
@@ -374,7 +391,7 @@ abstract class Abstract_Feature implements Feature {
 			return true;
 		}
 
-		return \WordPress\AI\current_user_can_access_feature( static::get_id() );
+		return current_user_can_access_feature( static::get_id() );
 	}
 
 	/**

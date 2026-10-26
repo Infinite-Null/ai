@@ -68,6 +68,8 @@ class Summarization extends Abstract_Feature {
 
 	/**
 	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
 	 */
 	protected function register_feature(): void {
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ), 5 );

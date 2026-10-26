@@ -52,7 +52,7 @@ class Content_Translation extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 1.3.0
+	 * @since x.x.x
 	 */
 	protected function register_feature(): void {
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );

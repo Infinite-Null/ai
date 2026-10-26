@@ -47,6 +47,8 @@ class Excerpt_Generation extends Abstract_Feature {
 
 	/**
 	 * {@inheritDoc}
+	 *
+	 * @since x.x.x
 	 */
 	protected function register_feature(): void {
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );

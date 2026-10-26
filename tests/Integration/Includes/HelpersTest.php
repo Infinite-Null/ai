@@ -23,6 +23,7 @@ use WordPress\AiClient\Providers\DTO\ProviderMetadata;
 use WordPress\AiClient\Providers\Models\Contracts\ModelInterface;
 use WordPress\AiClient\Providers\Models\DTO\ModelConfig;
 use WordPress\AiClient\Providers\Models\Enums\CapabilityEnum;
+use function WordPress\AI\current_user_can_access_feature;
 use function WordPress\AI\post_type_supports_bulk_action;
 use function WordPress\AI\register_deprecated_ability_alias;
 
@@ -2342,10 +2343,10 @@ class HelpersTest extends WP_UnitTestCase {
 
 		try {
 			wp_set_current_user( $allowed_user );
-			$this->assertTrue( \WordPress\AI\current_user_can_access_feature( $feature_id ) );
+			$this->assertTrue( current_user_can_access_feature( $feature_id ) );
 
 			wp_set_current_user( $unallowed_user );
-			$this->assertFalse( \WordPress\AI\current_user_can_access_feature( $feature_id ) );
+			$this->assertFalse( current_user_can_access_feature( $feature_id ) );
 		} finally {
 			delete_option( "wpai_feature_{$feature_id}_users" );
 		}
@@ -2365,10 +2366,10 @@ class HelpersTest extends WP_UnitTestCase {
 
 		try {
 			wp_set_current_user( $admin_id );
-			$this->assertTrue( \WordPress\AI\current_user_can_access_feature( $feature_id ) );
+			$this->assertTrue( current_user_can_access_feature( $feature_id ) );
 
 			wp_set_current_user( $subscriber_id );
-			$this->assertFalse( \WordPress\AI\current_user_can_access_feature( $feature_id ) );
+			$this->assertFalse( current_user_can_access_feature( $feature_id ) );
 		} finally {
 			delete_option( "wpai_feature_{$feature_id}_roles" );
 		}
@@ -2385,9 +2386,9 @@ class HelpersTest extends WP_UnitTestCase {
 		$contributor_id = $this->factory->user->create( array( 'role' => 'contributor' ) );
 
 		wp_set_current_user( $subscriber_id );
-		$this->assertFalse( \WordPress\AI\current_user_can_access_feature( $feature_id ) );
+		$this->assertFalse( current_user_can_access_feature( $feature_id ) );
 
 		wp_set_current_user( $contributor_id );
-		$this->assertFalse( \WordPress\AI\current_user_can_access_feature( $feature_id ) );
+		$this->assertFalse( current_user_can_access_feature( $feature_id ) );
 	}
 }

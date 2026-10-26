@@ -977,7 +977,7 @@ function generate_embeddings( $input, array $args = array() ) {
  *
  * @since x.x.x
  *
- * @return string[] Array of default role slugs.
+ * @return list<string> Array of default role slugs.
  */
 function get_default_feature_roles(): array {
 	$default_candidates = array( 'administrator', 'editor' );

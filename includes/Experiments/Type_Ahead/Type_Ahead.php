@@ -65,7 +65,7 @@ class Type_Ahead extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 1.1.0
+	 * @since x.x.x
 	 */
 	protected function register_feature(): void {
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ) );

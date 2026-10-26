@@ -51,7 +51,7 @@ class Suggest_Reply extends Abstract_Feature {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @since 1.2.0
+	 * @since x.x.x
 	 */
 	protected function register_feature(): void {
 		add_filter( 'comment_row_actions', array( $this, 'add_row_action' ), 10, 2 );
