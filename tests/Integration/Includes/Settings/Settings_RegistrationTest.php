@@ -49,9 +49,11 @@ class Settings_RegistrationTest extends WP_UnitTestCase {
 	public function tearDown(): void {
 		unregister_setting( Settings_Registration::OPTION_GROUP, 'wpai_feature_settings-registration-test_enabled' );
 		unregister_setting( Settings_Registration::OPTION_GROUP, 'wpai_feature_settings-registration-test_field_developer' );
+		unregister_setting( Settings_Registration::ACCESS_CONTROL_OPTION_GROUP, 'wpai_feature_settings-registration-test_access_control_enabled' );
 		unregister_setting( Settings_Registration::ACCESS_CONTROL_OPTION_GROUP, 'wpai_feature_settings-registration-test_roles' );
 		unregister_setting( Settings_Registration::ACCESS_CONTROL_OPTION_GROUP, 'wpai_feature_settings-registration-test_users' );
 		delete_option( 'wpai_feature_settings-registration-test_field_developer' );
+		delete_option( 'wpai_feature_settings-registration-test_access_control_enabled' );
 		delete_option( 'wpai_feature_settings-registration-test_roles' );
 		delete_option( 'wpai_feature_settings-registration-test_users' );
 		parent::tearDown();
@@ -83,11 +85,11 @@ class Settings_RegistrationTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that register_settings() registers roles and users settings.
+	 * Test that register_settings() registers access control settings (enabled, roles, users).
 	 *
 	 * @since x.x.x
 	 */
-	public function test_register_settings_registers_roles_and_users_settings(): void {
+	public function test_register_settings_registers_access_control_settings(): void {
 		global $wp_registered_settings;
 
 		$registry = new Registry();
@@ -96,8 +98,16 @@ class Settings_RegistrationTest extends WP_UnitTestCase {
 		$registration = new Settings_Registration( $registry );
 		$registration->register_settings();
 
-		$roles_setting = 'wpai_feature_settings-registration-test_roles';
-		$users_setting = 'wpai_feature_settings-registration-test_users';
+		$enabled_setting = 'wpai_feature_settings-registration-test_access_control_enabled';
+		$roles_setting   = 'wpai_feature_settings-registration-test_roles';
+		$users_setting   = 'wpai_feature_settings-registration-test_users';
+
+		$this->assertArrayHasKey( $enabled_setting, $wp_registered_settings );
+		$this->assertSame( 'boolean', $wp_registered_settings[ $enabled_setting ]['type'] );
+		$this->assertFalse( $wp_registered_settings[ $enabled_setting ]['default'] );
+		$this->assertSame( 'rest_sanitize_boolean', $wp_registered_settings[ $enabled_setting ]['sanitize_callback'] );
+		$this->assertTrue( $wp_registered_settings[ $enabled_setting ]['show_in_rest'] );
+		$this->assertSame( Settings_Registration::ACCESS_CONTROL_OPTION_GROUP, $wp_registered_settings[ $enabled_setting ]['group'] );
 
 		$this->assertArrayHasKey( $roles_setting, $wp_registered_settings );
 		$this->assertSame( 'array', $wp_registered_settings[ $roles_setting ]['type'] );
