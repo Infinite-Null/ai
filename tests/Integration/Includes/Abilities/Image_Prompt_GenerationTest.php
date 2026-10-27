@@ -511,4 +511,18 @@ class Image_Prompt_GenerationTest extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'type', $meta['mcp'], 'mcp should have type' );
 		$this->assertEquals( 'prompt', $meta['mcp']['type'], 'mcp type should be prompt' );
 	}
+
+	/**
+	 * Tests get_feature_id() returns 'image-generation'.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_feature_id(): void {
+		$reflection = new \ReflectionClass( $this->ability );
+		$method     = $reflection->getMethod( 'get_feature_id' );
+		$method->setAccessible( true );
+
+		$this->assertSame( 'image-generation', $method->invoke( $this->ability ) );
+	}
 }
+

@@ -98,6 +98,21 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that register_ability() backward compatibility method delegates to register_abilities().
+	 *
+	 * @since x.x.x
+	 */
+	public function test_register_ability_backward_compatibility() {
+		$this->setExpectedIncorrectUsage( 'wp_register_ability' );
+
+		$experiment = new Block_Container_Label_Generation();
+		$experiment->register_ability();
+
+		$this->assertTrue( function_exists( 'wp_has_ability' ) && wp_has_ability( 'ai/block-container-label-generation' ) );
+	}
+
+
+	/**
 	 * Test that the experiment is not enabled when individually disabled.
 	 *
 	 * @since x.x.x

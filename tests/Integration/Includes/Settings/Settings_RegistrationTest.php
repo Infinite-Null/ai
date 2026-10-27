@@ -121,6 +121,63 @@ class Settings_RegistrationTest extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Tests the sanitize_callback for the feature access control roles setting.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_access_control_roles_sanitize_callback(): void {
+		global $wp_registered_settings;
+
+		$feature      = new Settings_Registration_Test_Feature();
+		$registry     = new Registry();
+		$registry->register_feature( $feature );
+		$registration = new Settings_Registration( $registry );
+		$registration->register_settings();
+
+		$setting_name      = "wpai_feature_{$feature->get_id()}_roles";
+		$sanitize_callback = $wp_registered_settings[ $setting_name ]['sanitize_callback'];
+
+		// Non-array input should return an empty array.
+		$this->assertSame( array(), $sanitize_callback( 'invalid-string' ) );
+		$this->assertSame( array(), $sanitize_callback( null ) );
+
+		// Should filter out non-strings and invalid roles, keeping only valid registered roles.
+		$input    = array( 'administrator', 'invalid_role', 123, 'editor', true, 'editor' );
+		$expected = array( 'administrator', 'editor', 'editor' );
+		$this->assertSame( $expected, $sanitize_callback( $input ) );
+	}
+
+	/**
+	 * Tests the sanitize_callback for the feature access control users setting.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_access_control_users_sanitize_callback(): void {
+		global $wp_registered_settings;
+
+		$feature      = new Settings_Registration_Test_Feature();
+		$registry     = new Registry();
+		$registry->register_feature( $feature );
+		$registration = new Settings_Registration( $registry );
+		$registration->register_settings();
+
+		$setting_name      = "wpai_feature_{$feature->get_id()}_users";
+		$sanitize_callback = $wp_registered_settings[ $setting_name ]['sanitize_callback'];
+
+		// Non-array input should return an empty array.
+		$this->assertSame( array(), $sanitize_callback( 'not-an-array' ) );
+		$this->assertSame( array(), $sanitize_callback( 42 ) );
+
+		$valid_user_id = $this->factory->user->create();
+
+		// Should filter out non-existent users, zero, and negative IDs.
+		$input    = array( $valid_user_id, 999999, 0, -10, "{$valid_user_id}" );
+		$expected = array( $valid_user_id, $valid_user_id );
+		$this->assertSame( $expected, $sanitize_callback( $input ) );
+	}
+
+
+	/**
 	 * Tests that register_settings() no longer registers the retired global toggle option.
 	 *
 	 * @since 1.4.0

@@ -172,4 +172,35 @@ class Roles_Users_ControllerTest extends WP_UnitTestCase {
 		$this->assertContains( 'TargetAdminUser', $user_names );
 		$this->assertNotContains( 'BatchUser1', $user_names );
 	}
+
+	/**
+	 * Test that the include parameter retrieves explicitly specified users and excludes them from suggestions.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_get_roles_users_with_include_parameter(): void {
+		$admin_id = $this->factory->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin_id );
+
+		$special_user_id = $this->factory->user->create(
+			array(
+				'role'         => 'editor',
+				'display_name' => 'IncludedSpecialUser',
+			)
+		);
+
+		$request = new WP_REST_Request( 'GET', '/ai/v1/roles-users' );
+		$request->set_param( 'include', array( $special_user_id ) );
+
+		$response = rest_get_server()->dispatch( $request );
+		$data     = $response->get_data();
+
+		$this->assertSame( 200, $response->get_status() );
+		$user_ids = array_column( $data['users'], 'id' );
+		$this->assertContains( $special_user_id, $user_ids );
+
+		$user_names = array_column( $data['users'], 'name' );
+		$this->assertContains( 'IncludedSpecialUser', $user_names );
+	}
 }
+
