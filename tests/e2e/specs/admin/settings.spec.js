@@ -727,8 +727,20 @@ test.describe( 'Plugin settings', () => {
 				'.ai-access-control-mode-fields.ai-feature-settings-form'
 			);
 
+		// Enable access control for Content Summarization.
+		const enableAccessControlToggle =
+			contentSummarizationAccessForm.getByRole( 'checkbox', {
+				name: 'Enable access control',
+			} );
+		await expect( enableAccessControlToggle ).toBeVisible( {
+			timeout: 10000,
+		} );
+		if ( ! ( await enableAccessControlToggle.isChecked() ) ) {
+			await enableAccessControlToggle.check();
+		}
+
 		// The Editor checkbox must NOT be checked at the start of this test.
-		// A previous run may have left it checked, so uncheck it if needed.
+		// Uncheck it to test blocking the editor role.
 		const editorCheckboxInitial = contentSummarizationAccessForm.getByRole(
 			'checkbox',
 			{ name: 'Editor' }
@@ -736,13 +748,20 @@ test.describe( 'Plugin settings', () => {
 		await expect( editorCheckboxInitial ).toBeVisible( { timeout: 10000 } );
 		if ( await editorCheckboxInitial.isChecked() ) {
 			await editorCheckboxInitial.uncheck();
-			// Save the unchecked state before proceeding.
-			const resetSaveButton = contentSummarizationAccessForm.getByRole(
-				'button',
-				{ name: 'Save' }
-			);
-			await expect( resetSaveButton ).toBeVisible( { timeout: 10000 } );
+		}
+
+		// Save the access control settings (enabled with Editor unchecked).
+		const resetSaveButton = contentSummarizationAccessForm.getByRole(
+			'button',
+			{ name: 'Save' }
+		);
+		if ( await resetSaveButton.isVisible() ) {
 			await resetSaveButton.click();
+			await expect(
+				page.getByTestId( 'snackbar' ).filter( {
+					hasText: 'Access control settings saved.',
+				} )
+			).toBeVisible();
 			await expect( resetSaveButton ).not.toBeVisible( {
 				timeout: 10000,
 			} );
@@ -966,11 +985,26 @@ test.describe( 'Plugin settings', () => {
 				'.ai-access-control-mode-fields.ai-feature-settings-form'
 			);
 
+		// Enable access control for Content Summarization.
+		const enableAccessControlToggle =
+			contentSummarizationAccessForm.getByRole( 'checkbox', {
+				name: 'Enable access control',
+			} );
+		await expect( enableAccessControlToggle ).toBeVisible( {
+			timeout: 10000,
+		} );
+		if ( ! ( await enableAccessControlToggle.isChecked() ) ) {
+			await enableAccessControlToggle.check();
+		}
+
 		// Ensure ALL role checkboxes are unchecked so access is driven only by
 		// the Users token field (not by role membership).
 		const roleCheckboxes = contentSummarizationAccessForm.locator(
-			'.components-checkbox-control__input'
+			'.ai-access-control-mode-fields__roles-grid .components-checkbox-control__input'
 		);
+		await expect( roleCheckboxes.first() ).toBeVisible( {
+			timeout: 10000,
+		} );
 		const roleCount = await roleCheckboxes.count();
 		for ( let i = 0; i < roleCount; i++ ) {
 			const checkbox = roleCheckboxes.nth( i );
@@ -979,13 +1013,18 @@ test.describe( 'Plugin settings', () => {
 			}
 		}
 
-		// If any role was unchecked, a Save button will appear — click it.
+		// If the toggle was turned on or any role was unchecked, Save button will appear — click it.
 		const roleSaveButton = contentSummarizationAccessForm.getByRole(
 			'button',
 			{ name: 'Save' }
 		);
 		if ( await roleSaveButton.isVisible() ) {
 			await roleSaveButton.click();
+			await expect(
+				page.getByTestId( 'snackbar' ).filter( {
+					hasText: 'Access control settings saved.',
+				} )
+			).toBeVisible();
 			await expect( roleSaveButton ).not.toBeVisible( {
 				timeout: 10000,
 			} );
