@@ -252,7 +252,6 @@ export function AccessControlSettings( {
 				<Flex gap={ 4 } direction="column">
 					<FlexItem>
 						<ToggleControl
-							__nextHasNoMarginBottom
 							label={ __( 'Enable access control', 'ai' ) }
 							help={
 								effectiveEnabled
@@ -261,7 +260,7 @@ export function AccessControlSettings( {
 											'ai'
 									  )
 									: __(
-											'Default permissions determine who can use this feature.',
+											'Currently disabled so default permissions will apply.',
 											'ai'
 									  )
 							}
