@@ -6,7 +6,7 @@
  * WordPress dependencies
  */
 import { Button } from '@wordpress/components';
-import { dispatch, select, useSelect } from '@wordpress/data';
+import { dispatch, useSelect } from '@wordpress/data';
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import { store as editorStore } from '@wordpress/editor';
 import { useState } from '@wordpress/element';
@@ -20,9 +20,9 @@ import { ensureProvider } from '../../../utils/provider-status';
 import { hasMinimumContent } from '../../../utils/character-count';
 import { getErrorMessage } from '../../../utils/errors';
 import {
+	buildDocumentContext,
 	generateLabel,
 	getBlockSubtreeContent,
-	getDocumentOutline,
 	getSettings,
 	setInputValue,
 } from '../utils';
@@ -128,20 +128,7 @@ export default function RenameModalButton( {
 		);
 
 		try {
-			const postTitle = (
-				select( editorStore ) as {
-					getEditedPostAttribute?: ( attr: string ) => unknown;
-				}
-			 )?.getEditedPostAttribute?.( 'title' ) as string | undefined;
-
-			const allBlocks = ( select( blockEditorStore )?.getBlocks() ??
-				[] ) as Block[];
-
-			const documentContext = getDocumentOutline(
-				allBlocks,
-				postTitle,
-				block.clientId
-			);
+			const documentContext = buildDocumentContext( block.clientId );
 
 			const result = (
 				await generateLabel( blockContent, postId, documentContext )

@@ -14,9 +14,9 @@ import { __, sprintf } from '@wordpress/i18n';
 import { hasMinimumContent } from '../../../utils/character-count';
 import { ensureProvider } from '../../../utils/provider-status';
 import {
+	buildDocumentContext,
 	collectLabelCandidates,
 	generateLabel,
-	getDocumentOutline,
 	getSettings,
 	hasContainerBlocks as checkHasContainerBlocks,
 } from '../utils';
@@ -74,21 +74,10 @@ export function useBlockContainerLabelGeneration(): UseBlockContainerLabelGenera
 		setTotal( candidates.length );
 		setProgress( 0 );
 
-		const postTitle = (
-			select( editorStore ) as {
-				getEditedPostAttribute?: ( attr: string ) => unknown;
-			}
-		 )?.getEditedPostAttribute?.( 'title' ) as string | undefined;
-
-		const allBlocks = ( select( blockEditorStore )?.getBlocks() ??
-			[] ) as Block[];
-
 		for ( const candidate of candidates ) {
 			try {
 				setActiveClientId( candidate.clientId );
-				const documentContext = getDocumentOutline(
-					allBlocks,
-					postTitle,
+				const documentContext = buildDocumentContext(
 					candidate.clientId
 				);
 				const label = (
