@@ -35,10 +35,6 @@ class Settings_Registration_Test_Feature extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
-	public function register(): void {}
 }
 
 /**

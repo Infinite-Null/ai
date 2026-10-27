@@ -35,14 +35,6 @@ class Test_Image_Prompt_Generation_Experiment extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * Registers the experiment.
-	 *
-	 * @since 0.3.0
-	 */
-	public function register(): void {
-		// No-op for testing.
-	}
 }
 
 /**

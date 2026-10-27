@@ -35,15 +35,6 @@ class Test_Comment_Moderation_Experiment extends Abstract_Feature {
 			'description' => 'AI-powered sentiment and toxicity analysis for comments.',
 		);
 	}
-
-	/**
-	 * Registers the experiment.
-	 *
-	 * @since 0.9.0
-	 */
-	public function register(): void {
-		// No-op for testing.
-	}
 }
 
 /**

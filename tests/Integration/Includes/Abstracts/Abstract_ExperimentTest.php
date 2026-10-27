@@ -36,14 +36,6 @@ class Test_Categorized_Experiment extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * Registers the experiment.
-	 *
-	 * @since 0.4.0
-	 */
-	public function register(): void {
-		// No-op for testing.
-	}
 }
 
 /**
@@ -69,14 +61,6 @@ class Test_Uncategorized_Experiment extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * Registers the experiment.
-	 *
-	 * @since 0.4.0
-	 */
-	public function register(): void {
-		// No-op for testing.
-	}
 }
 
 /**
@@ -153,14 +137,6 @@ class Test_Empty_Category_Experiment extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * Registers the experiment.
-	 *
-	 * @since 0.4.0
-	 */
-	public function register(): void {
-		// No-op for testing.
-	}
 }
 
 /**
@@ -187,10 +163,6 @@ class Test_Feature_With_Settings extends Abstract_Feature {
 		);
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
-	public function register(): void {}
 
 	/**
 	 * {@inheritDoc}
@@ -517,4 +489,45 @@ class Abstract_FeatureTest extends WP_UnitTestCase {
 		$this->assertSame( 'integer', $fields[1]['type'] );
 		$this->assertSame( 3, $fields[1]['default'] );
 	}
+
+	/**
+	 * Tests that overriding register() directly triggers a _doing_it_wrong() notice.
+	 *
+	 * @since x.x.x
+	 */
+	public function test_overriding_register_triggers_doing_it_wrong(): void {
+		$this->setExpectedIncorrectUsage( 'WordPress\AI\Tests\Integration\Includes\Abstracts\Test_Legacy_Register_Feature::register' );
+
+		new Test_Legacy_Register_Feature();
+	}
+}
+
+/**
+ * Feature that overrides register() directly to test backwards compatibility and notice.
+ *
+ * @since x.x.x
+ */
+class Test_Legacy_Register_Feature extends Abstract_Feature {
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function get_id(): string {
+		return 'test-legacy-register';
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	protected function load_metadata(): array {
+		return array(
+			'label'       => 'Test Legacy Register',
+			'description' => 'A feature overriding register directly',
+			'category'    => Experiment_Category::EDITOR,
+		);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public function register(): void {}
 }
