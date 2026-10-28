@@ -78,11 +78,11 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that register_ability() registers the ability with the abilities API.
+	 * Test that register_abilities() registers the ability with the abilities API.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_register_ability() {
+	public function test_register_abilities() {
 		$this->setExpectedIncorrectUsage( 'WP_Abilities_Registry::register' );
 
 		$experiment = new Block_Container_Label_Generation();
@@ -95,20 +95,6 @@ class Block_Container_Label_GenerationTest extends WP_UnitTestCase {
 		$ability = wp_get_ability( 'ai/block-container-label-generation' );
 		$this->assertNotNull( $ability, 'Ability should not be null.' );
 		$this->assertEquals( 'Block Container Label Generation', $ability->get_label() );
-	}
-
-	/**
-	 * Test that register_ability() backward compatibility method delegates to register_abilities().
-	 *
-	 * @since x.x.x
-	 */
-	public function test_register_ability_backward_compatibility() {
-		$this->setExpectedIncorrectUsage( 'wp_register_ability' );
-
-		$experiment = new Block_Container_Label_Generation();
-		$experiment->register_ability();
-
-		$this->assertTrue( function_exists( 'wp_has_ability' ) && wp_has_ability( 'ai/block-container-label-generation' ) );
 	}
 
 

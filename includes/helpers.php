@@ -1066,8 +1066,6 @@ function current_user_can_access_feature( string $feature_id ): bool {
 			$has_access = true;
 		} elseif ( array_intersect( $current_user->roles, $roles ) ) {
 			$has_access = true;
-		} elseif ( array_intersect( $current_user->roles, array( 'subscriber', 'contributor' ) ) ) {
-			$has_access = false;
 		} else {
 			$has_access = false;
 		}

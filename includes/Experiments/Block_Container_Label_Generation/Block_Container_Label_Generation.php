@@ -82,15 +82,6 @@ class Block_Container_Label_Generation extends Abstract_Feature {
 	}
 
 	/**
-	 * Backward compatibility alias for register_abilities().
-	 *
-	 * @since x.x.x
-	 */
-	public function register_ability(): void {
-		$this->register_abilities();
-	}
-
-	/**
 	 * Enqueues and localizes the admin script.
 	 *
 	 * @since x.x.x
