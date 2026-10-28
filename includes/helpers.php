@@ -1029,6 +1029,7 @@ function get_default_feature_roles(): array {
  *
  * If access control is not enabled for the feature, access is granted by default (preserving standard capability checks).
  * When access control is enabled:
+ * - If roles have not been customized, access defaults to eligible default roles (administrators and editors).
  * - Super admins on multisite installations always have access across all sites.
  * - If the user is explicitly listed in the feature's allowed users, access is granted.
  * - If the user matches at least one allowed role, access is granted.
@@ -1050,7 +1051,10 @@ function current_user_can_access_feature( string $feature_id ): bool {
 		$has_access = true;
 		$roles      = array();
 	} else {
-		$roles = get_option( "wpai_feature_{$feature_id}_roles", array() );
+		$roles = get_option( "wpai_feature_{$feature_id}_roles" );
+		if ( false === $roles ) {
+			$roles = get_default_feature_roles();
+		}
 		$users = get_option( "wpai_feature_{$feature_id}_users", array() );
 
 		$roles = is_array( $roles ) ? $roles : array();

@@ -2364,6 +2364,7 @@ class HelpersTest extends WP_UnitTestCase {
 		$unallowed_user = $this->factory->user->create( array( 'role' => 'editor' ) );
 
 		update_option( "wpai_feature_{$feature_id}_access_control_enabled", true );
+		update_option( "wpai_feature_{$feature_id}_roles", array() );
 		update_option( "wpai_feature_{$feature_id}_users", array( $allowed_user ) );
 
 		try {
@@ -2374,6 +2375,7 @@ class HelpersTest extends WP_UnitTestCase {
 			$this->assertFalse( current_user_can_access_feature( $feature_id ) );
 		} finally {
 			delete_option( "wpai_feature_{$feature_id}_access_control_enabled" );
+			delete_option( "wpai_feature_{$feature_id}_roles" );
 			delete_option( "wpai_feature_{$feature_id}_users" );
 		}
 	}
