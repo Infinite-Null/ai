@@ -140,12 +140,10 @@ abstract class Abstract_Ability extends WP_Ability {
 
 		$feature_id = $this->get_feature_id();
 		if ( null !== $feature_id && ! current_user_can_access_feature( $feature_id ) ) {
-			$status = function_exists( 'rest_authorization_required_code' ) ? rest_authorization_required_code() : 403;
-
 			return new WP_Error(
 				'feature_access_denied',
 				__( 'You do not have permission to access this feature.', 'ai' ),
-				array( 'status' => $status )
+				array( 'status' => rest_authorization_required_code() )
 			);
 		}
 

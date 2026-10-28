@@ -73,7 +73,9 @@ export function useAccessControlSettings(
 
 	const settings: AccessControlSettings = {
 		enabled: typeof rawEnabled === 'boolean' ? rawEnabled : false,
-		roles: Array.isArray( rawRoles ) ? rawRoles.map( String ) : [],
+		roles: Array.isArray( rawRoles )
+			? rawRoles.map( String )
+			: [ 'administrator', 'editor' ],
 		users: Array.isArray( rawUsers ) ? rawUsers.map( Number ) : [],
 	};
 

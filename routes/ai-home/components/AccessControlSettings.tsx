@@ -69,34 +69,18 @@ export function AccessControlSettings( {
 	const [ localUsers, setLocalUsers ] = useState< number[] | null >( null );
 
 	const effectiveEnabled = localEnabled ?? settings.enabled;
-	const effectiveRoles = useMemo( () => {
-		if ( localRoles !== null ) {
-			return localRoles;
-		}
-		if ( settings.enabled ) {
-			return settings.roles;
-		}
-		return settings.roles.length > 0
-			? settings.roles
-			: [ 'administrator', 'editor' ];
-	}, [ localRoles, settings.enabled, settings.roles ] );
+	const effectiveRoles = useMemo(
+		() => localRoles ?? settings.roles,
+		[ localRoles, settings.roles ]
+	);
 	const effectiveUsers = localUsers ?? settings.users;
 
 	const handleToggleEnabled = useCallback(
 		( enabled: boolean ) => {
 			setLocalEnabled( enabled );
-			let newRoles = effectiveRoles;
-			if (
-				enabled &&
-				newRoles.length === 0 &&
-				effectiveUsers.length === 0
-			) {
-				newRoles = [ 'administrator', 'editor' ];
-				setLocalRoles( newRoles );
-			}
 			stage( {
 				enabled,
-				roles: newRoles,
+				roles: effectiveRoles,
 				users: effectiveUsers,
 			} );
 		},
