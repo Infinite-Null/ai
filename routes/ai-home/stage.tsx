@@ -8,7 +8,6 @@ import {
 	MenuGroup,
 	MenuItem,
 	Spinner,
-	ToggleControl,
 } from '@wordpress/components';
 import { store as coreStore } from '@wordpress/core-data';
 import { useDispatch, useRegistry, useSelect } from '@wordpress/data';
@@ -35,6 +34,11 @@ import AIIcon from './ai-icon';
 import { DeveloperSettings } from './components/DeveloperSettings';
 import { AccessControlSettings } from './components/AccessControlSettings';
 import { FeatureToggle } from './components/FeatureToggle';
+import {
+	FeatureToggleControl,
+	parseFeatureUsage,
+} from './components/FeatureToggleText';
+import type { FeatureUsage } from './components/FeatureToggleText';
 import { ImportConfirmModal } from './components/ImportConfirmModal';
 import {
 	AdvancedSettingsContext,
@@ -82,6 +86,8 @@ interface FeatureData {
 	stability: string;
 	image: string;
 	capability: string;
+	usage: FeatureUsage | null;
+	docsUrl: string;
 }
 
 interface PageData {
@@ -162,6 +168,8 @@ function parseFeature( value: unknown ): FeatureData | null {
 		stability: toStringValue( feature.stability ) || 'experimental',
 		image: toStringValue( feature.image ),
 		capability: toStringValue( feature.capability ) || 'text_generation',
+		usage: parseFeatureUsage( feature.usage ),
+		docsUrl: toStringValue( feature.docsUrl ),
 	};
 }
 
@@ -579,8 +587,10 @@ function FeatureToggleWithSettings( {
 
 	return (
 		<div className="ai-feature-toggle-with-settings">
-			<ToggleControl
+			<FeatureToggleControl
 				label={ field.label }
+				usage={ feature?.usage }
+				docsUrl={ feature?.docsUrl }
 				help={ field.description }
 				checked={ checked }
 				onChange={ ( value ) => {
@@ -635,8 +645,10 @@ function VisualCardToggle( {
 				/>
 			) }
 			<Card.Content>
-				<ToggleControl
+				<FeatureToggleControl
 					label={ field.label }
+					usage={ feature?.usage }
+					docsUrl={ feature?.docsUrl }
 					checked={ checked }
 					onChange={ ( value ) =>
 						onChange( { [ field.id ]: value } )
@@ -729,6 +741,8 @@ function AISettingsPage() {
 					stability: 'experimental',
 					image: '',
 					capability: 'text_generation',
+					usage: null,
+					docsUrl: '',
 				} );
 				return acc;
 			}, [] );
@@ -854,12 +868,16 @@ function AISettingsPage() {
 				const featureId = feature.id;
 				const featureCapability = feature.capability;
 				const featureCategory = feature.category;
+				const featureUsage = feature.usage;
+				const featureDocsUrl = feature.docsUrl;
 				baseField.Edit = ( props ) => (
 					<FeatureToggle
 						{ ...props }
 						featureId={ featureId }
 						capability={ featureCapability }
 						category={ featureCategory }
+						usage={ featureUsage }
+						docsUrl={ featureDocsUrl }
 					/>
 				);
 			}
@@ -995,10 +1013,14 @@ function AISettingsPage() {
 						<Page
 							visual={ <AIIcon /> }
 							title={ __( 'AI', 'ai' ) }
-							subTitle={ __(
-								'Configure AI features and experiments for your WordPress site.',
-								'ai'
-							) }
+							subTitle={
+								<span className="ai-settings-page__subtitle">
+									{ __(
+										'Turn on stable Features and early-stage Experiments. Experiments may change or be removed in any release, and some run automatically once enabled, so try them on a staging site first.',
+										'ai'
+									) }
+								</span>
+							}
 							actions={
 								<>
 									<Link
@@ -1008,7 +1030,7 @@ function AISettingsPage() {
 										{ __( 'Learn', 'ai' ) }
 									</Link>
 									<Link
-										href="https://github.com/WordPress/ai/tree/develop/docs"
+										href="https://github.com/WordPress/ai/blob/trunk/docs/GETTING_STARTED.md"
 										openInNewTab
 									>
 										{ __( 'Docs', 'ai' ) }

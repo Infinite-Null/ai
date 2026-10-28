@@ -86,6 +86,14 @@ abstract class Abstract_Feature implements Feature {
 	protected string $capability;
 
 	/**
+	 * Summary of when the feature runs, what it sends, and how many requests it makes.
+	 *
+	 * @since x.x.x
+	 * @var array{trigger: 'automatic'|'on_demand'|'none', runs: string, sends: string, requests: string, details: string}|array{}
+	 */
+	private array $usage;
+
+	/**
 	 * Constructor.
 	 *
 	 * Loads feature metadata and initializes properties.
@@ -125,6 +133,7 @@ abstract class Abstract_Feature implements Feature {
 		$this->stability   = $metadata['stability'] ?? 'experimental';
 		$this->image       = $metadata['image'] ?? '';
 		$this->capability  = $metadata['capability'] ?? 'text_generation';
+		$this->usage       = self::normalize_usage( $metadata['usage'] ?? array() );
 
 		if ( ! $this->supports_access_control() ) {
 			return;
@@ -143,12 +152,48 @@ abstract class Abstract_Feature implements Feature {
 	}
 
 	/**
+	 * Normalizes usage metadata.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $usage Raw usage metadata.
+	 * @return array{trigger: 'automatic'|'on_demand'|'none', runs: string, sends: string, requests: string, details: string}|array{} Normalized usage metadata, or an empty array if none was provided.
+	 */
+	private static function normalize_usage( $usage ): array {
+		if ( ! is_array( $usage ) || empty( $usage ) ) {
+			return array();
+		}
+
+		$trigger = $usage['trigger'] ?? 'on_demand';
+		if ( ! in_array( $trigger, array( 'automatic', 'on_demand', 'none' ), true ) ) {
+			$trigger = 'on_demand';
+		}
+
+		return array(
+			'trigger'  => $trigger,
+			'runs'     => is_string( $usage['runs'] ?? null ) ? $usage['runs'] : '',
+			'sends'    => is_string( $usage['sends'] ?? null ) ? $usage['sends'] : '',
+			'requests' => is_string( $usage['requests'] ?? null ) ? $usage['requests'] : '',
+			'details'  => is_string( $usage['details'] ?? null ) ? $usage['details'] : '',
+		);
+	}
+
+	/**
 	 * Loads feature metadata.
 	 *
 	 * Must return an array with keys: label, description.
-	 * Optionally includes: category, stability.
+	 * Optionally includes: category, stability, image, capability, usage.
+	 *
+	 * The `usage` key summarizes, in short user-facing phrases, when the
+	 * feature runs, what it sends to the AI provider, and how many requests
+	 * it makes. Set `trigger` to `automatic` when the feature can run
+	 * without a user action once enabled, `on_demand` when it only runs
+	 * when a user asks, or `none` when it never calls an AI provider.
+	 * Features that make no AI requests can set `details` instead of
+	 * `requests` to describe what they store or change.
 	 *
 	 * @since 0.6.0
+	 * @since x.x.x Added the `usage` key.
 	 *
 	 * @return array{
 	 *  label: string,
@@ -156,6 +201,14 @@ abstract class Abstract_Feature implements Feature {
 	 *  category?: string,
 	 *  stability?: 'deprecated'|'experimental'|'stable',
 	 *  image?: string,
+	 *  capability?: string,
+	 *  usage?: array{
+	 *    trigger?: 'automatic'|'on_demand'|'none',
+	 *    runs?: string,
+	 *    sends?: string,
+	 *    requests?: string,
+	 *    details?: string,
+	 *  },
 	 * } Feature metadata.
 	 */
 	abstract protected function load_metadata(): array;
@@ -263,6 +316,17 @@ abstract class Abstract_Feature implements Feature {
 	 */
 	public function get_capability(): string {
 		return $this->capability;
+	}
+
+	/**
+	 * Gets a summary of when the feature runs, what it sends, and how many requests it makes.
+	 *
+	 * @since x.x.x
+	 *
+	 * @return array{trigger: 'automatic'|'on_demand'|'none', runs: string, sends: string, requests: string, details: string}|array{} Usage metadata, or an empty array if the feature doesn't provide any.
+	 */
+	public function get_usage(): array {
+		return $this->usage;
 	}
 
 	/**

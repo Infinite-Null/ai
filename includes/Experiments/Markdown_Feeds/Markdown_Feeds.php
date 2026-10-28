@@ -72,6 +72,12 @@ class Markdown_Feeds extends Abstract_Feature {
 			'description' => __( 'Serves your content as Markdown for AI agents and other machine readers: adds a Markdown feed at /feed/markdown/ and Markdown versions of individual posts and pages via ?output_format=markdown, with optional Accept-header negotiation.', 'ai' ),
 			'category'    => Experiment_Category::ADMIN,
 			'capability'  => 'none',
+			'usage'       => array(
+				'trigger' => 'none',
+				'runs'    => __( 'On front-end requests', 'ai' ),
+				'sends'   => __( 'Nothing', 'ai' ),
+				'details' => __( 'Renders Markdown versions of public posts, pages, and comments', 'ai' ),
+			),
 		);
 	}
 
