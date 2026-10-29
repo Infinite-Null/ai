@@ -8,9 +8,8 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
  */
 const {
 	disableExperiment,
-	disableExperiments,
+	disableAllFeatures,
 	enableExperiment,
-	enableExperiments,
 	seedCredentials,
 } = require( '../../utils/helpers' );
 
@@ -21,16 +20,32 @@ const LONG_CONTENT =
 
 test.describe( 'Internal Link Suggestions Experiment', () => {
 	test.beforeEach( async ( { requestUtils } ) => {
+		await disableAllFeatures( requestUtils );
 		await seedCredentials( requestUtils );
+		await requestUtils.rest( {
+			method: 'POST',
+			path: '/wp/v2/settings',
+			data: {
+				'wpai_feature_internal-links_field_embedding': {
+					provider: 'openai',
+					model: 'text-embedding-3-small',
+				},
+			},
+		} );
+	} );
+
+	test.afterEach( async ( { requestUtils } ) => {
+		await requestUtils.rest( {
+			method: 'POST',
+			path: '/wp/v2/settings',
+			data: { 'wpai_feature_internal-links_field_embedding': {} },
+		} );
 	} );
 
 	test( 'Can enable the internal link suggestions experiment', async ( {
 		admin,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Internal Link Suggestions Experiment.
 		await enableExperiment( admin, page, EXPERIMENT_LABEL );
 	} );
@@ -41,15 +56,14 @@ test.describe( 'Internal Link Suggestions Experiment', () => {
 		page,
 		requestUtils,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Internal Link Suggestions Experiment.
 		await enableExperiment( admin, page, EXPERIMENT_LABEL );
 
 		// Create a target post so it is in the site index.
-		await requestUtils.createPost( {
+		const targetPost = await requestUtils.createPost( {
 			title: 'Target Post for Internal Linking',
+			content:
+				'Learn about the WordPress REST API for content management.',
 			status: 'publish',
 		} );
 
@@ -80,7 +94,7 @@ test.describe( 'Internal Link Suggestions Experiment', () => {
 		).toBeVisible( { timeout: 15000 } );
 		await expect(
 			page.locator( '.ai-internal-links__suggestions-header' )
-		).toHaveText( '1 suggestion(s) found.' );
+		).toHaveText( '1 suggestion found.' );
 
 		const suggestionItem = page.locator( '.ai-internal-links__suggestion' );
 		await expect( suggestionItem ).toBeVisible();
@@ -100,8 +114,16 @@ test.describe( 'Internal Link Suggestions Experiment', () => {
 			} )
 		).toBeVisible();
 
-		// Save the post.
+		// Verify the accepted link is persisted to the intended target.
 		await editor.saveDraft();
+		const postId = new URL( page.url() ).searchParams.get( 'post' );
+		const savedPost = await requestUtils.rest( {
+			path: `/wp/v2/posts/${ postId }`,
+			params: { context: 'edit' },
+		} );
+		expect( savedPost.content.raw ).toContain(
+			`<a href="${ targetPost.link }">WordPress REST API</a>`
+		);
 	} );
 
 	test( 'Suggest Internal Links button is disabled when there is not enough content', async ( {
@@ -109,9 +131,6 @@ test.describe( 'Internal Link Suggestions Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Enable the Internal Link Suggestions Experiment.
 		await enableExperiment( admin, page, EXPERIMENT_LABEL );
 
@@ -137,24 +156,25 @@ test.describe( 'Internal Link Suggestions Experiment', () => {
 		await expect(
 			page.locator( '.ai-internal-links__plugin-description' )
 		).toHaveText(
-			'Internal Link Suggestions will be available when the post content has at least 75 characters.'
+			'Internal Link Suggestions will be available when the content has at least 75 characters.'
 		);
 	} );
 
-	test( 'Ensure the Internal Link Suggestions Experiment UI is not visible when Experiments are globally disabled', async ( {
+	test( 'Ensure the Internal Link Suggestions Experiment UI is not visible when all features are disabled', async ( {
 		admin,
 		editor,
 		page,
+		requestUtils,
 	} ) => {
 		// Enable the Internal Link Suggestions Experiment.
 		await enableExperiment( admin, page, EXPERIMENT_LABEL );
 
-		// Globally turn off Experiments.
-		await disableExperiments( admin, page );
+		// Disable all feature toggles using the current settings API.
+		await disableAllFeatures( requestUtils );
 
 		await admin.createNewPost( {
 			postType: 'post',
-			title: 'Test Internal Links Globally Disabled',
+			title: 'Test Internal Links All Features Disabled',
 			content: LONG_CONTENT,
 		} );
 
@@ -173,9 +193,6 @@ test.describe( 'Internal Link Suggestions Experiment', () => {
 		editor,
 		page,
 	} ) => {
-		// Globally turn on Experiments.
-		await enableExperiments( admin, page );
-
 		// Disable the Internal Link Suggestions Experiment.
 		await disableExperiment( admin, page, EXPERIMENT_LABEL );
 

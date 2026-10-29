@@ -554,6 +554,30 @@ function ai_e2e_test_request_mocking( $preempt, $parsed_args, $url ) {
 		}
 	}
 
+	// Keep embedding retrieval deterministic without sending test content to OpenAI.
+	if ( str_contains( $url, 'https://api.openai.com/v1/embeddings' ) ) {
+		$body     = json_decode( $parsed_args['body'] ?? '', true );
+		$input    = $body['input'] ?? '';
+		$input    = is_array( $input ) ? implode( ' ', $input ) : $input;
+		$response = wp_json_encode(
+			array(
+				'object' => 'list',
+				'data'   => array(
+					array(
+						'object'    => 'embedding',
+						'index'     => 0,
+						'embedding' => str_contains( $input, 'WordPress REST API' ) ? array( 1.0, 0.0, 0.0 ) : array( 0.0, 1.0, 0.0 ),
+					),
+				),
+				'model'  => 'text-embedding-3-small',
+				'usage'  => array(
+					'prompt_tokens' => 1,
+					'total_tokens'  => 1,
+				),
+			)
+		);
+	}
+
 	// Mock the OpenAI images API response.
 	if ( str_contains( $url, 'https://api.openai.com/v1/images/generations' ) ) {
 		$response = file_get_contents( __DIR__ . '/responses/OpenAI/image.json' );
