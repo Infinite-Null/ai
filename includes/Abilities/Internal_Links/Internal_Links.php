@@ -9,9 +9,11 @@ declare( strict_types=1 );
 
 namespace WordPress\AI\Abilities\Internal_Links;
 
+use InvalidArgumentException;
 use WP_Error;
 use WP_Query;
 use WordPress\AI\Abstracts\Abstract_Ability;
+use WordPress\AI\Embeddings\Vector_Math;
 use WordPress\AI\Experiments\Internal_Links\Internal_Links as Internal_Links_Experiment;
 
 use function WordPress\AI\generate_embeddings;
@@ -208,7 +210,14 @@ class Internal_Links extends Abstract_Ability {
 		}
 
 		// Find the most semantically similar published posts using cosine similarity.
-		$candidates = $this->find_similar_posts( $content_embedding, $post_id );
+		try {
+			$candidates = $this->find_similar_posts( $content_embedding, $post_id );
+		} catch ( InvalidArgumentException $e ) {
+			return new WP_Error(
+				'invalid_content_embedding',
+				esc_html__( 'The AI provider returned an invalid embedding for this content. Please try again.', 'ai' )
+			);
+		}
 
 		if ( empty( $candidates ) ) {
 			return array( 'suggestions' => array() );
@@ -296,54 +305,31 @@ class Internal_Links extends Abstract_Ability {
 	/**
 	 * Generates an embedding vector for a plain-text string.
 	 *
+	 * Uses the site's explicit embedding configuration rather than the text
+	 * generation model, so every vector is generated with the same model.
+	 *
 	 * @since x.x.x
 	 *
 	 * @param string $text The text to embed.
 	 * @return list<float>|\WP_Error The embedding vector, or WP_Error on failure.
 	 */
 	public function get_embedding_for_text( string $text ) {
-		$result = generate_embeddings( $text );
+		$config = get_option( Internal_Links_Experiment::get_field_option_name( 'embedding' ), array() );
+
+		if ( ! is_array( $config ) || empty( $config['provider'] ) || empty( $config['model'] ) ) {
+			return new WP_Error(
+				'internal_links_embeddings_not_configured',
+				esc_html__( 'Choose an embedding provider and model for Internal Link Suggestions in Settings → AI before suggesting links.', 'ai' )
+			);
+		}
+
+		$result = generate_embeddings( $text, $config );
 
 		if ( is_wp_error( $result ) ) {
 			return $result;
 		}
 
 		return $result->getEmbedding()->getValues();
-	}
-
-	/**
-	 * Computes the cosine similarity between two equal-length vectors.
-	 *
-	 * Returns a value in [−1, 1]. Returns 0.0 when either vector has zero
-	 * magnitude (degenerate case).
-	 *
-	 * @since x.x.x
-	 *
-	 * @param list<float> $a First vector.
-	 * @param list<float> $b Second vector.
-	 * @return float Cosine similarity score.
-	 */
-	public function cosine_similarity( array $a, array $b ): float {
-		$dot    = 0.0;
-		$mag_a  = 0.0;
-		$mag_b  = 0.0;
-		$length = count( $a );
-
-		for ( $i = 0; $i < $length; $i++ ) {
-			$ai     = (float) ( $a[ $i ] ?? 0.0 );
-			$bi     = (float) ( $b[ $i ] ?? 0.0 );
-			$dot   += $ai * $bi;
-			$mag_a += $ai * $ai;
-			$mag_b += $bi * $bi;
-		}
-
-		$denom = sqrt( $mag_a ) * sqrt( $mag_b );
-
-		if ( $denom < 1.0e-10 ) {
-			return 0.0;
-		}
-
-		return $dot / $denom;
 	}
 
 	/**
@@ -358,8 +344,13 @@ class Internal_Links extends Abstract_Ability {
 	 * @param list<float> $content_embedding Embedding of the post being edited.
 	 * @param int         $exclude_post_id   ID of the post being edited (excluded from candidates).
 	 * @return list<array{url: string, title: string}> Top candidates ordered by similarity.
+	 *
+	 * @throws \InvalidArgumentException If the content embedding is invalid or zero.
 	 */
 	public function find_similar_posts( array $content_embedding, int $exclude_post_id ): array {
+		// Validate the query before skipping individual candidates with unusable vectors.
+		Vector_Math::cosine_similarity( $content_embedding, $content_embedding );
+
 		$query = new WP_Query(
 			array(
 				'post_type'              => array( 'post', 'page' ),
@@ -402,8 +393,15 @@ class Internal_Links extends Abstract_Ability {
 				continue;
 			}
 
+			try {
+				$score = Vector_Math::cosine_similarity( $content_embedding, $embedding );
+			} catch ( InvalidArgumentException $e ) {
+				// Skip zero, invalid, or mismatched candidate vectors.
+				continue;
+			}
+
 			$scored[] = array(
-				'score' => $this->cosine_similarity( $content_embedding, $embedding ),
+				'score' => $score,
 				'url'   => esc_url_raw( $url ),
 				'title' => sanitize_text_field( $title ),
 			);

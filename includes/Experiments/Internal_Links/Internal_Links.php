@@ -13,6 +13,7 @@ use WordPress\AI\Abilities\Internal_Links\Internal_Links as Internal_Links_Abili
 use WordPress\AI\Abstracts\Abstract_Feature;
 use WordPress\AI\Asset_Loader;
 use WordPress\AI\Experiments\Experiment_Category;
+use WordPress\AI\Settings\Settings_Registration;
 
 use function WordPress\AI\get_min_content_length;
 
@@ -52,6 +53,63 @@ class Internal_Links extends Abstract_Feature {
 	public function register(): void {
 		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_assets' ), 5 );
+	}
+
+	/**
+	 * Registers the embedding selection separately from the text-generation override.
+	 *
+	 * @since x.x.x
+	 */
+	public function register_settings(): void {
+		register_setting(
+			Settings_Registration::OPTION_GROUP,
+			static::get_field_option_name( 'embedding' ),
+			array(
+				'type'              => 'object',
+				'default'           => array(),
+				'sanitize_callback' => array( $this, 'sanitize_embedding_config' ),
+				'show_in_rest'      => array(
+					'schema' => array(
+						'type'                 => 'object',
+						'additionalProperties' => false,
+						'properties'           => array(
+							'provider' => array(
+								'type'    => 'string',
+								'default' => '',
+							),
+							'model'    => array(
+								'type'    => 'string',
+								'default' => '',
+							),
+						),
+					),
+				),
+			)
+		);
+	}
+
+	/**
+	 * Sanitizes the provider and model stored by the settings screen.
+	 *
+	 * @since x.x.x
+	 *
+	 * @param mixed $value The submitted embedding configuration.
+	 * @return array{provider: string, model: string} Sanitized configuration.
+	 */
+	public function sanitize_embedding_config( $value ): array {
+		$value = is_array( $value ) ? $value : array();
+
+		return array(
+			'provider' => isset( $value['provider'] ) && is_string( $value['provider'] ) ? trim( sanitize_text_field( $value['provider'] ) ) : '',
+			'model'    => isset( $value['model'] ) && is_string( $value['model'] ) ? trim( sanitize_text_field( $value['model'] ) ) : '',
+		);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public function get_preloaded_options(): array {
+		return array( static::get_field_option_name( 'embedding' ) );
 	}
 
 	/**
