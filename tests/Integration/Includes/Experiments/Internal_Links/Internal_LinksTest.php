@@ -161,4 +161,29 @@ class Internal_LinksTest extends WP_UnitTestCase {
 		$localized = (string) wp_scripts()->get_data( 'ai_internal_links', 'data' );
 		$this->assertStringContainsString( '"maxSuggestions":"3"', $localized );
 	}
+	/** Tests that embedding settings are exposed and sanitized through WordPress settings. */
+	public function test_embedding_settings_registration_and_sanitization(): void {
+		$experiment = new Internal_Links();
+		$experiment->register_settings();
+		$name       = Internal_Links::get_field_option_name( 'embedding' );
+		$registered = get_registered_settings();
+		$this->assertSame( 'object', $registered[ $name ]['type'] );
+		$this->assertFalse( $registered[ $name ]['show_in_rest']['schema']['additionalProperties'] );
+		update_option(
+			$name,
+			array(
+				'provider'   => ' <b>ollama</b> ',
+				'model'      => ' nomic-embed-text:latest ',
+				'unexpected' => 'discard',
+			)
+		);
+		$this->assertSame(
+			array(
+				'provider' => 'ollama',
+				'model'    => 'nomic-embed-text:latest',
+			),
+			get_option( $name )
+		);
+		$this->assertContains( $name, $experiment->get_preloaded_options() );
+	}
 }

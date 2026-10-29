@@ -474,4 +474,97 @@ class Internal_LinksTest extends WP_UnitTestCase {
 		$this->assertSame( 'REST API', $suggestions[0]['anchor_text'] );
 		$this->assertSame( 'https://example.com/rest-api/', $suggestions[0]['url'] );
 	}
+
+	/** Tests that configured generation returns a usable link. */
+	public function test_generation_returns_suggestions(): void {
+		$ability = $this->mock_generation_ability();
+		$ability->method( 'get_embedding_for_text' )->willReturn( array( 1.0, 0.0 ) );
+		$ability->method( 'find_similar_posts' )->willReturn(
+			array(
+				array(
+					'url'   => 'https://example.com/guide/',
+					'title' => 'Guide',
+				),
+			)
+		);
+		$builder = $this->getMockBuilder( \WP_AI_Client_Prompt_Builder::class )
+			->disableOriginalConstructor()->addMethods( array( 'is_supported_for_text_generation', 'generate_text' ) )->getMock();
+		$builder->method( 'is_supported_for_text_generation' )->willReturn( true );
+		$builder->method( 'generate_text' )->willReturn( '{"suggestions":[{"anchor_text":"REST API","url":"https://example.com/guide/","title":"Guide","context":"Use the REST API."}]}' );
+		add_filter(
+			'wpai_internal_links_prompt_builder',
+			static function () use ( $builder ) {
+				return $builder;
+			}
+		);
+		$result = $this->execute_generation( $ability );
+		$this->assertCount( 1, $result['suggestions'] );
+		$this->assertSame( 'https://example.com/guide/', $result['suggestions'][0]['url'] );
+	}
+
+	/** Tests that embedding failures are returned unchanged. */
+	public function test_generation_returns_embedding_error(): void {
+		$ability = $this->mock_generation_ability();
+		$error   = new WP_Error( 'provider_failed', 'Provider failed.' );
+		$ability->method( 'get_embedding_for_text' )->willReturn( $error );
+		$ability->expects( $this->never() )->method( 'find_similar_posts' );
+		$this->assertSame( $error, $this->execute_generation( $ability ) );
+	}
+
+	/** Tests that candidate failures are returned unchanged. */
+	public function test_generation_returns_candidate_error(): void {
+		$ability = $this->mock_generation_ability();
+		$error   = new WP_Error( 'provider_failed', 'Provider failed.' );
+		$ability->method( 'get_embedding_for_text' )->willReturn( array( 1.0, 0.0 ) );
+		$ability->method( 'find_similar_posts' )->willReturn( $error );
+		$this->assertSame( $error, $this->execute_generation( $ability ) );
+	}
+
+	/** Tests that an empty candidate list returns no suggestions. */
+	public function test_generation_without_candidates(): void {
+		$ability = $this->mock_generation_ability();
+		$ability->method( 'get_embedding_for_text' )->willReturn( array( 1.0, 0.0 ) );
+		$ability->method( 'find_similar_posts' )->willReturn( array() );
+		$this->assertSame( array( 'suggestions' => array() ), $this->execute_generation( $ability ) );
+	}
+
+	/** Tests the configuration error without calling a provider. */
+	public function test_embedding_requires_configuration(): void {
+		delete_option( 'wpai_feature_internal-links_field_embedding' );
+		$result = $this->ability->get_embedding_for_text( 'Content' );
+		$this->assertInstanceOf( WP_Error::class, $result );
+		$this->assertSame( 'internal_links_embeddings_not_configured', $result->get_error_code() );
+	}
+
+	/** Creates an ability whose provider calls can be stubbed. */
+	private function mock_generation_ability() {
+		return $this->getMockBuilder( Internal_Links::class )
+			->setConstructorArgs(
+				array(
+					'ai/internal-links',
+					array(
+						'label'       => 'Links',
+						'description' => 'Links',
+					),
+				)
+			)
+			->onlyMethods( array( 'get_embedding_for_text', 'find_similar_posts' ) )->getMock();
+	}
+
+	/** Invokes the callback with a small, fixed post. */
+	private function execute_generation( Internal_Links $ability ) {
+		if ( ! \WordPress\AI\supports_embedding_generation() ) {
+			$this->markTestSkipped( 'Embedding generation is unavailable.' );
+		}
+		$method = new \ReflectionMethod( Internal_Links::class, 'execute_callback' );
+		$method->setAccessible( true );
+		return $method->invoke(
+			$ability,
+			array(
+				'post_id'          => 0,
+				'post_content'     => 'Use the REST API.',
+				'excluded_anchors' => array( 'already linked' ),
+			)
+		);
+	}
 }
