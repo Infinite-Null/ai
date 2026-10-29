@@ -219,6 +219,10 @@ class Internal_Links extends Abstract_Ability {
 			);
 		}
 
+		if ( is_wp_error( $candidates ) ) {
+			return $candidates;
+		}
+
 		if ( empty( $candidates ) ) {
 			return array( 'suggestions' => array() );
 		}
@@ -343,11 +347,11 @@ class Internal_Links extends Abstract_Ability {
 	 *
 	 * @param list<float> $content_embedding Embedding of the post being edited.
 	 * @param int         $exclude_post_id   ID of the post being edited (excluded from candidates).
-	 * @return list<array{url: string, title: string}> Top candidates ordered by similarity.
+	 * @return list<array{url: string, title: string}>|\WP_Error Top candidates ordered by similarity, or an embedding generation error.
 	 *
 	 * @throws \InvalidArgumentException If the content embedding is invalid or zero.
 	 */
-	public function find_similar_posts( array $content_embedding, int $exclude_post_id ): array {
+	public function find_similar_posts( array $content_embedding, int $exclude_post_id ) {
 		// Validate the query before skipping individual candidates with unusable vectors.
 		Vector_Math::cosine_similarity( $content_embedding, $content_embedding );
 
@@ -355,6 +359,7 @@ class Internal_Links extends Abstract_Ability {
 			array(
 				'post_type'              => array( 'post', 'page' ),
 				'post_status'            => 'publish',
+				'has_password'           => false,
 				'posts_per_page'         => -1,
 				'post__not_in'           => $exclude_post_id ? array( $exclude_post_id ) : array(), // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_post__not_in, WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_post__not_in
 				'no_found_rows'          => true,
@@ -366,6 +371,10 @@ class Internal_Links extends Abstract_Ability {
 		$scored = array();
 
 		foreach ( $query->posts as $post ) {
+			if ( ! $post instanceof \WP_Post || '' !== $post->post_password ) {
+				continue;
+			}
+
 			// Full post objects are already in the cache — no extra DB round-trips.
 			$title = $post->post_title;
 			$url   = get_permalink( $post );
@@ -389,8 +398,8 @@ class Internal_Links extends Abstract_Ability {
 			$embedding = $this->get_embedding_for_text( $post_plain_text );
 
 			if ( is_wp_error( $embedding ) ) {
-				// Skip posts whose embeddings fail; do not abort the whole request.
-				continue;
+				// Stop provider requests and preserve the error for the editor.
+				return $embedding;
 			}
 
 			try {
