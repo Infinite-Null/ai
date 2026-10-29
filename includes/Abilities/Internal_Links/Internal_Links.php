@@ -339,9 +339,9 @@ class Internal_Links extends Abstract_Ability {
 	/**
 	 * Finds the most semantically similar published posts to the given embedding.
 	 *
-	 * Fetches all published post IDs (excluding the current post), generates an
-	 * embedding for each one, ranks them by cosine similarity, and returns the
-	 * top EMBEDDING_CANDIDATE_LIMIT entries with url and title.
+	 * Fetches eligible published posts and pages in batches (excluding the current
+	 * post), generates an embedding for each one, ranks them by cosine similarity,
+	 * and returns the top EMBEDDING_CANDIDATE_LIMIT entries with url and title.
 	 *
 	 * @since x.x.x
 	 *
@@ -355,66 +355,75 @@ class Internal_Links extends Abstract_Ability {
 		// Validate the query before skipping individual candidates with unusable vectors.
 		Vector_Math::cosine_similarity( $content_embedding, $content_embedding );
 
-		$query = new WP_Query(
-			array(
-				'post_type'              => array( 'post', 'page' ),
-				'post_status'            => 'publish',
-				'has_password'           => false,
-				'posts_per_page'         => -1,
-				'post__not_in'           => $exclude_post_id ? array( $exclude_post_id ) : array(), // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_post__not_in, WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_post__not_in
-				'no_found_rows'          => true,
-				'update_post_meta_cache' => false,
-				'update_post_term_cache' => false,
-			)
-		);
+		$batch_size = 50;
+		$page       = 1;
+		$scored     = array();
 
-		$scored = array();
-
-		foreach ( $query->posts as $post ) {
-			if ( ! $post instanceof \WP_Post || '' !== $post->post_password ) {
-				continue;
-			}
-
-			// Full post objects are already in the cache — no extra DB round-trips.
-			$title = $post->post_title;
-			$url   = get_permalink( $post );
-
-			if ( false === $url || '' === $title || '' === $url ) {
-				continue;
-			}
-
-			// Build the plain-text representation of this post for embedding.
-			$post_plain_text = normalize_content(
-				wp_strip_all_tags(
-					(string) apply_filters( 'the_content', $post->post_content ) // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
+		do {
+			$query = new WP_Query(
+				array(
+					'post_type'              => array( 'post', 'page' ),
+					'post_status'            => 'publish',
+					'has_password'           => false,
+					'posts_per_page'         => $batch_size,
+					'paged'                  => $page,
+					'orderby'                => 'ID',
+					'order'                  => 'ASC',
+					'post__not_in'           => $exclude_post_id ? array( $exclude_post_id ) : array(), // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_post__not_in, WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_post__not_in
+					'no_found_rows'          => true,
+					'update_post_meta_cache' => false,
+					'update_post_term_cache' => false,
 				)
 			);
 
-			if ( empty( $post_plain_text ) ) {
-				// Fall back to the title when the post has no content to embed.
-				$post_plain_text = sanitize_text_field( $title );
+			foreach ( $query->posts as $post ) {
+				if ( ! $post instanceof \WP_Post || '' !== $post->post_password ) {
+					continue;
+				}
+
+				// Full post objects are already in the cache — no extra DB round-trips.
+				$title = $post->post_title;
+				$url   = get_permalink( $post );
+
+				if ( false === $url || '' === $title || '' === $url ) {
+					continue;
+				}
+
+				// Build the plain-text representation of this post for embedding.
+				$post_plain_text = normalize_content(
+					wp_strip_all_tags(
+						(string) apply_filters( 'the_content', $post->post_content ) // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
+					)
+				);
+
+				if ( empty( $post_plain_text ) ) {
+					// Fall back to the title when the post has no content to embed.
+					$post_plain_text = sanitize_text_field( $title );
+				}
+
+				$embedding = $this->get_embedding_for_text( $post_plain_text );
+
+				if ( is_wp_error( $embedding ) ) {
+					// Stop provider requests and preserve the error for the editor.
+					return $embedding;
+				}
+
+				try {
+					$score = Vector_Math::cosine_similarity( $content_embedding, $embedding );
+				} catch ( InvalidArgumentException $e ) {
+					// Skip zero, invalid, or mismatched candidate vectors.
+					continue;
+				}
+
+				$scored[] = array(
+					'score' => $score,
+					'url'   => esc_url_raw( $url ),
+					'title' => sanitize_text_field( $title ),
+				);
 			}
 
-			$embedding = $this->get_embedding_for_text( $post_plain_text );
-
-			if ( is_wp_error( $embedding ) ) {
-				// Stop provider requests and preserve the error for the editor.
-				return $embedding;
-			}
-
-			try {
-				$score = Vector_Math::cosine_similarity( $content_embedding, $embedding );
-			} catch ( InvalidArgumentException $e ) {
-				// Skip zero, invalid, or mismatched candidate vectors.
-				continue;
-			}
-
-			$scored[] = array(
-				'score' => $score,
-				'url'   => esc_url_raw( $url ),
-				'title' => sanitize_text_field( $title ),
-			);
-		}
+			++$page;
+		} while ( $query->post_count === $batch_size );
 
 		if ( empty( $scored ) ) {
 			return array();
