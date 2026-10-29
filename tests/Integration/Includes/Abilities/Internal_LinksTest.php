@@ -90,6 +90,7 @@ class Internal_LinksTest extends WP_UnitTestCase {
 	 */
 	public function tearDown(): void {
 		wp_set_current_user( 0 );
+		remove_all_filters( 'wpai_internal_links_prompt_builder' );
 		parent::tearDown();
 	}
 
@@ -236,6 +237,37 @@ class Internal_LinksTest extends WP_UnitTestCase {
 			$this->markTestSkipped( 'Embedding generation is not available; text-generation-missing path cannot be reached.' );
 		}
 
+		$ability = $this->getMockBuilder( Internal_Links::class )
+			->setConstructorArgs(
+				array(
+					'ai/internal-links',
+					array(
+						'label'       => $this->experiment->get_label(),
+						'description' => $this->experiment->get_description(),
+					),
+				)
+			)
+			->onlyMethods( array( 'get_embedding_for_text' ) )
+			->getMock();
+		$ability->expects( $this->exactly( 2 ) )
+			->method( 'get_embedding_for_text' )
+			->willReturn( array( 1.0, 0.0 ) );
+
+		$prompt_builder = $this->getMockBuilder( \WP_AI_Client_Prompt_Builder::class )
+			->disableOriginalConstructor()
+			->addMethods( array( 'is_supported_for_text_generation', 'generate_text' ) )
+			->getMock();
+		$prompt_builder->expects( $this->once() )
+			->method( 'is_supported_for_text_generation' )
+			->willReturn( false );
+		$prompt_builder->expects( $this->never() )->method( 'generate_text' );
+		add_filter(
+			'wpai_internal_links_prompt_builder',
+			static function () use ( $prompt_builder ) {
+				return $prompt_builder;
+			}
+		);
+
 		$post_id = self::factory()->post->create( array( 'post_status' => 'publish' ) );
 		self::factory()->post->create(
 			array(
@@ -244,12 +276,12 @@ class Internal_LinksTest extends WP_UnitTestCase {
 			)
 		);
 
-		$reflection = new \ReflectionClass( $this->ability );
+		$reflection = new \ReflectionClass( $ability );
 		$method     = $reflection->getMethod( 'execute_callback' );
 		$method->setAccessible( true );
 
 		$result = $method->invoke(
-			$this->ability,
+			$ability,
 			array(
 				'post_id'      => $post_id,
 				'post_content' => 'Check out our Other Post for more details.',
@@ -330,42 +362,38 @@ class Internal_LinksTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that cosine_similarity() returns the expected value for known vectors.
+	 * Test that candidate retrieval rejects an unusable query embedding.
 	 *
 	 * @since x.x.x
 	 */
-	public function test_cosine_similarity_returns_expected_value() {
-		// Identical vectors should have similarity 1.0.
-		$a = array( 1.0, 0.0, 0.0 );
-		$b = array( 1.0, 0.0, 0.0 );
-		$this->assertEqualsWithDelta( 1.0, $this->ability->cosine_similarity( $a, $b ), 1.0e-9 );
+	public function test_find_similar_posts_rejects_zero_content_embedding() {
+		$this->expectException( \InvalidArgumentException::class );
 
-		// Orthogonal vectors should have similarity 0.0.
-		$c = array( 1.0, 0.0, 0.0 );
-		$d = array( 0.0, 1.0, 0.0 );
-		$this->assertEqualsWithDelta( 0.0, $this->ability->cosine_similarity( $c, $d ), 1.0e-9 );
-
-		// Opposite vectors should have similarity -1.0.
-		$e = array( 1.0, 0.0 );
-		$f = array( -1.0, 0.0 );
-		$this->assertEqualsWithDelta( -1.0, $this->ability->cosine_similarity( $e, $f ), 1.0e-9 );
-
-		// Zero vector should yield 0.0 (degenerate case).
-		$z = array( 0.0, 0.0, 0.0 );
-		$this->assertEqualsWithDelta( 0.0, $this->ability->cosine_similarity( $a, $z ), 1.0e-9 );
+		$this->ability->find_similar_posts( array( 0.0, 0.0 ), 0 );
 	}
 
 	/**
 	 * Test that find_similar_posts() returns candidates and excludes the current post.
 	 *
-	 * Requires embedding generation to be available; skipped otherwise.
-	 *
 	 * @since x.x.x
 	 */
 	public function test_find_similar_posts_excludes_current_post() {
-		if ( ! \WordPress\AI\supports_embedding_generation() ) {
-			$this->markTestSkipped( 'Embedding generation is not available in this environment.' );
-		}
+		$ability = $this->getMockBuilder( Internal_Links::class )
+			->setConstructorArgs(
+				array(
+					'ai/internal-links',
+					array(
+						'label'       => $this->experiment->get_label(),
+						'description' => $this->experiment->get_description(),
+					),
+				)
+			)
+			->onlyMethods( array( 'get_embedding_for_text' ) )
+			->getMock();
+		$ability->expects( $this->once() )
+			->method( 'get_embedding_for_text' )
+			->with( 'Some content about WordPress development.' )
+			->willReturn( array( 1.0, 0.0 ) );
 
 		self::factory()->post->create(
 			array(
@@ -385,10 +413,12 @@ class Internal_LinksTest extends WP_UnitTestCase {
 		// Use a simple unit vector as the content embedding to avoid a real API call here.
 		$content_embedding = array( 1.0, 0.0 );
 
-		$candidates = $this->ability->find_similar_posts( $content_embedding, $current_post_id );
+		$candidates = $ability->find_similar_posts( $content_embedding, $current_post_id );
 
+		$this->assertIsArray( $candidates );
 		$titles = array_column( $candidates, 'title' );
 
+		$this->assertContains( 'Other Published Post', $titles, 'Published candidates must be included.' );
 		$this->assertNotContains( 'Current Post', $titles, 'Current post must not appear in its own candidates.' );
 	}
 
