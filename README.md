@@ -59,6 +59,7 @@ Everything is opt-in and off by default. Features are stable and supported; Expe
 * **[AI Request Logging](docs/experiments/ai-request-logging.md)** – Logs AI requests for observability and debugging.
 * **[Alt Text Generation](docs/experiments/alt-text-generation.md)** - Generates descriptive alt text for images using AI vision models.
 * **[Block Container Label Generation](docs/experiments/block-container-label-generation.md)** - Generates short List View labels for Group, Columns, and other container blocks.
+* **[Category and Tag Description Generation](docs/experiments/term-description-generation.md)** – Suggests descriptions from posts assigned to existing categories and tags.
 * **[Comment Moderation](docs/experiments/comment-moderation.md)** (runs automatically) - Automatically moderate comments based on toxicity detection and sentiment analysis, and give each comment a value score. Includes guest comments by default.
 * **[Connector Approval](docs/experiments/connector-approval.md)** - Require explicit administrator approval before plugins or themes can use AI connectors configured on this site.
 * **[Content Classification](docs/experiments/content-classification.md)** – Suggests relevant tags and categories to organize content.

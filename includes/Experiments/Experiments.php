@@ -49,6 +49,7 @@ final class Experiments {
 		\WordPress\AI\Experiments\Revision_Change_Summary\Revision_Change_Summary::class,
 		\WordPress\AI\Experiments\Slug_Generation\Slug_Generation::class,
 		\WordPress\AI\Experiments\Text_To_Speech\Text_To_Speech::class,
+		\WordPress\AI\Experiments\Term_Description_Generation\Term_Description_Generation::class,
 		\WordPress\AI\Experiments\Title_Generation\Title_Generation::class,
 		\WordPress\AI\Experiments\Type_Ahead\Type_Ahead::class,
 		\WordPress\AI\Experiments\Markdown_Feeds\Markdown_Feeds::class,

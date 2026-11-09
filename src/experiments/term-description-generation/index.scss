@@ -1,0 +1,21 @@
+.ai-term-description-generation {
+	margin-top: 12px;
+	max-width: 650px;
+
+	.components-notice {
+		margin: 12px 0;
+	}
+
+	&__preview {
+		margin-top: 16px;
+		padding: 16px;
+		border: 1px solid #c3c4c7;
+	}
+
+	&__actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+		margin-top: 12px;
+	}
+}
